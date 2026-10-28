@@ -1,0 +1,199 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =====================================================================
+   SIPA Design System Tokens (Based on frontend-ux-ui skill tokens.css)
+   Palette:
+   - Cream (#EEE8DF)
+   - Beige (#C4BCB0)
+   - Deep Ocean (#2C365A)
+   - Forest Pig Green (#1E4D3B)
+   All foreground/background pairs verified >= 4.5:1 WCAG 2.2 AA
+   ===================================================================== */
+
+:root {
+  color-scheme: light dark;
+
+  /* ---------- Color: light theme (Editorial Cream & Deep Ocean) ---------- */
+  --color-bg: #EEE8DF;               /* Cream main canvas */
+  --color-surface: #F7F4EF;          /* Warm ivory cards & panels */
+  --color-surface-raised: #FFFFFF;   /* Crisp white elevated cards, modals, tables */
+  --color-border: #C4BCB0;           /* Beige structural dividers */
+  --color-border-input: #5C6F73;     /* Control boundaries: >3.5:1 against bg */
+
+  --color-text: #182038;             /* Deepest ocean ink (13.23:1 on Cream) */
+  --color-text-muted: #2C365A;       /* Deep Ocean secondary text (9.67:1 on Cream) */
+  --color-text-subtle: #444F6E;      /* Hints, captions (6.65:1 on Cream) */
+
+  --color-primary: #2C365A;          /* Deep Ocean primary brand action */
+  --color-primary-hover: #212946;
+  --color-primary-active: #181E34;
+  --color-on-primary: #FFFFFF;
+  --color-primary-subtle: #E2E5EE;
+  --color-on-primary-subtle: #182038;
+
+  --color-accent: #1E4D3B;           /* Forest Green from SIPA Pig Logo */
+  --color-accent-subtle: #E1EDE8;
+
+  --color-success: #1E4D3B;  --color-success-bg: #E4F0EB;  --color-on-success-bg: #14382A;
+  --color-warning: #92400E;  --color-warning-bg: #FEF3C7;  --color-on-warning-bg: #78350F;
+  --color-danger:  #991B1B;  --color-danger-bg:  #FEE2E2;  --color-on-danger-bg:  #7F1D1D;
+  --color-info:    #2C365A;  --color-info-bg:    #E2E6F2;  --color-on-info-bg:    #1E2642;
+
+  --color-focus: #1E4D3B;
+  --color-overlay: rgb(24 32 56 / 0.55);
+
+  --shadow-sm: 0 1px 2px rgb(44 54 90 / 0.07);
+  --shadow-md: 0 4px 14px rgb(44 54 90 / 0.10);
+  --shadow-lg: 0 14px 34px rgb(44 54 90 / 0.16);
+
+  /* ---------- Type ---------- */
+  --font-sans: "DM Sans", system-ui, -apple-system, sans-serif;
+  --font-serif: "Instrument Serif", Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: clamp(1.75rem, 1.4rem + 1.5vw, 2.25rem);
+  --text-4xl: clamp(2rem, 1.5rem + 2.5vw, 3rem);
+
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-body: 1.55;
+  --measure: 65ch;
+
+  /* ---------- Spacing (4px base) ---------- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-24: 6rem;
+
+  /* ---------- Shape ---------- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 9999px;
+
+  /* ---------- Layout ---------- */
+  --container-xl: 88rem;
+  --gutter: clamp(1rem, 0.5rem + 2vw, 2rem);
+  --control-height: 2.5rem;
+  --target-min: 2.75rem;
+
+  /* ---------- Motion ---------- */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ---------- Stacking ---------- */
+  --z-sticky: 100;
+  --z-dropdown: 200;
+  --z-overlay: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+}
+
+:root[data-theme="dark"] {
+  --color-bg: #14192B;
+  --color-surface: #1E253D;
+  --color-surface-raised: #27304F;
+  --color-border: #38446B;
+  --color-border-input: #8E9BBF;
+
+  --color-text: #EEE8DF;
+  --color-text-muted: #D4CEC3;
+  --color-text-subtle: #A8A196;
+
+  --color-primary: #EEE8DF;
+  --color-primary-hover: #FFFFFF;
+  --color-primary-active: #C4BCB0;
+  --color-on-primary: #182038;
+  --color-primary-subtle: #2C365A;
+  --color-on-primary-subtle: #EEE8DF;
+
+  --color-success: #52B788;  --color-success-bg: #123124;  --color-on-success-bg: #95D5B2;
+  --color-warning: #FBBF24;  --color-warning-bg: #3D2806;  --color-on-warning-bg: #FDE68A;
+  --color-danger:  #F87171;  --color-danger-bg:  #421212;  --color-on-danger-bg:  #FCA5A5;
+  --color-info:    #93C5FD;  --color-info-bg:    #1E294B;  --color-on-info-bg:    #BFDBFE;
+
+  --color-focus: #52B788;
+  --color-overlay: rgb(8 11 20 / 0.72);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-padding-top: var(--space-16);
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  line-height: var(--leading-tight);
+  text-wrap: balance;
+}
+
+table {
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Visible keyboard focus per WCAG 2.2 AA */
+:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+}
+.skip-link:focus {
+  left: var(--space-4);
+  top: var(--space-4);
+  z-index: var(--z-toast);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

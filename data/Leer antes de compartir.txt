@@ -1,0 +1,10 @@
+PAQUETE DEMOSTRATIVO - HACKATHON AGRO 2026
+
+Archivos recreados desde cero con datos ficticios; NO son copias anonimizadas de los originales.
+No contienen datos, formulas, vinculos externos, hojas ocultas ni metadatos de los libros de origen.
+Los nombres de productos y establecimientos son genericos; cifras y tipos de cambio inventados.
+No representan fielmente todas las columnas ni formulas de los reportes reales.
+Se recomienda aprobacion interna antes de distribuir incluso la descripcion de procesos.
+
+Correspondencia:
+01: informe mensual de septiembre; 02: informe anual 2026; 03: produccion y consumos; 04: farmacia; 05: stock Agriness; 06: balance SCADA; 07: resumen consumo PAB; 08: consumo PAB San Lorenzo; 09: S4Farm.
