@@ -48,6 +48,9 @@ interface FeedMillScadaViewProps {
   selectedEstablishment: EstablishmentId | "ALL";
   onAddBatch: (newBatch: FeedBatchRecord) => void;
   onUpdateExchangeRate: (newTc: number) => void;
+  loadedSystems?: { scada: boolean; nuvix: boolean; agriness: boolean };
+  onLoadAllSystems?: () => void;
+  onNavigateToTab?: (tab: any) => void;
 }
 
 export const FeedMillScadaView: React.FC<FeedMillScadaViewProps> = ({
@@ -56,6 +59,8 @@ export const FeedMillScadaView: React.FC<FeedMillScadaViewProps> = ({
   selectedEstablishment,
   onAddBatch,
   onUpdateExchangeRate,
+  loadedSystems,
+  onLoadAllSystems,
 }) => {
   // Parámetros interactivos de valorización (Archivo 08)
   const [includeOtherCost, setIncludeOtherCost] = useState<boolean>(false);
@@ -120,27 +125,32 @@ export const FeedMillScadaView: React.FC<FeedMillScadaViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Banner Sectorial: Planta de Alimentos Balanceados (SCADA) */}
-      <div className="p-4 rounded-lg bg-[#E2E6F2] border border-[#2C365A]/30 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="p-2 rounded-md bg-[#2C365A] text-white">
-            <Factory className="w-5 h-5" />
+      {/* Banner de Proceso 4 segun Guia 00 */}
+      <div className="p-4 rounded-xl bg-[#2C365A] text-white flex flex-wrap items-center justify-between gap-4 shadow-sm">
+        <div className="flex items-center gap-3.5">
+          <span className="p-2.5 rounded-lg bg-white/10 text-[#86EFAC] shrink-0">
+            <Factory className="w-6 h-6" />
           </span>
           <div>
-            <h2 className="text-sm font-bold text-[#1E2642]">
-              Vista Sectorial: Planta de Alimento Balanceado (SCADA + Valorización Nuvix)
-            </h2>
-            <p className="text-xs text-[#1E2642]/80">
-              Control de pesaje de tolvas, balance físico de silos de granos,
-              prorrateo de fletes y valorización bimonetaria (ARS / USD).
+            <div className="flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-bold">Proceso 4: Planta de alimentos</h2>
+              <Badge variant="forest" className="bg-[#1E4D3B] text-white border-none text-xs">
+                Salida Específica: Costo de alimento
+              </Badge>
+            </div>
+            <p className="text-xs text-[#C4BCB0] mt-0.5">
+              <strong>Origen:</strong> SCADA + Nuvix · <strong>Operación manual reemplazada:</strong> Conciliar silos, balance de fabricación y valorización de raciones. (Ejemplos: 06, 07 y 08).
             </p>
           </div>
         </div>
+
         <div className="flex items-center gap-2">
-          <Badge variant="ocean">Origen: Excels 06, 07 y 08</Badge>
+          <Badge variant="neutral" className="bg-white/10 text-[#86EFAC] border-white/20 text-xs">
+            Tolvas Control kg = 0 + Silos Maíz/Soja
+          </Badge>
           <Button
             size="sm"
-            variant="primary"
+            variant="forest"
             onClick={() => setShowNewBatchForm(!showNewBatchForm)}
           >
             <PlusCircle className="w-4 h-4" />
@@ -150,6 +160,36 @@ export const FeedMillScadaView: React.FC<FeedMillScadaViewProps> = ({
           </Button>
         </div>
       </div>
+
+      {/* Alerta si falta SCADA o Nuvix */}
+      {loadedSystems && (!loadedSystems.scada || !loadedSystems.nuvix) && (
+        <div className="p-4 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-xs flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              <strong>Atención:</strong> Para calcular el <strong>Costo de Alimento y Balance de Silos</strong> se requieren los pesajes de <strong>SCADA</strong> y los precios/fletes de <strong>Nuvix ERP</strong>. Faltan:{" "}
+              <strong>
+                {[
+                  !loadedSystems.scada ? "SCADA (Pesadas Tolva)" : null,
+                  !loadedSystems.nuvix ? "Nuvix ERP (Facturas Grano y Fletes)" : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </strong>
+            </span>
+          </div>
+          {onLoadAllSystems && (
+            <Button
+              variant="forest"
+              size="sm"
+              onClick={onLoadAllSystems}
+              className="text-xs h-auto py-1 font-bold"
+            >
+              Cargar exportaciones requeridas
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* FORMULARIO OPCIONAL PARA SIMULAR NUEVA MOLIENDA O DESVÍO DE BALANZA */}
       {showNewBatchForm && (
@@ -278,12 +318,12 @@ export const FeedMillScadaView: React.FC<FeedMillScadaViewProps> = ({
         <CardHeader>
           <div>
             <CardTitle>
-              Parámetros de Valorización de Fórmula y Tipo de Cambio (Archivo 08)
+              Parámetros de Valorización de Fórmula y Tipo de Cambio Bimonetario
             </CardTitle>
             <CardDescription>
-              La hoja "Valorizacion" del Excel 08 calcula Maíz (24.000 kg x $230)
-              y Harina de Soja (10.000 kg x $420), pero omite los 4.000 kg de
-              "Otros kg". Aquí podés activar su inclusión para obtener el costo
+              La valorización estándar calcula Maíz (24.000 kg x $230)
+              y Harina de Soja (10.000 kg x $420). Aquí podés activar la inclusión
+              de núcleos y microingredientes ("Otros kg") para obtener el costo
               completo real.
             </CardDescription>
           </div>
@@ -501,7 +541,7 @@ export const FeedMillScadaView: React.FC<FeedMillScadaViewProps> = ({
         <CardHeader>
           <div>
             <CardTitle>
-              Balance de Stock de Materias Primas en Silos y Ajustes (Archivo 06)
+              Balance de Stock de Materias Primas en Silos y Ajustes de Inventario
             </CardTitle>
             <CardDescription>
               Fórmula: Stock Final (kg) = Stock Inicial + Ingresos - Consumos +

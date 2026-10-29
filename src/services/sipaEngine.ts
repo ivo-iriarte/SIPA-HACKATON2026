@@ -238,6 +238,169 @@ export interface ColumnAliasRule {
   synonyms: string[];
 }
 
+export interface RawSystemExportDef {
+  system: SourceSystem;
+  systemTitle: string;
+  fileName: string;
+  downloadUrl: string;
+  description: string;
+  rawSheets: {
+    sheetName: string;
+    description: string;
+    primaryColumns: string[];
+  }[];
+  feedsProcesses: string[];
+}
+
+export const RAW_SYSTEM_EXPORTS_CATALOG: RawSystemExportDef[] = [
+  {
+    system: "SCADA",
+    systemTitle: "SCADA Planta de Alimentos",
+    fileName: "SCADA_Export_Planta_Septiembre2026.xlsx",
+    downloadUrl: "/raw_exports/SCADA_Export_Planta_Septiembre2026.xlsx",
+    description:
+      "Exportación cruda directa del sistema SCADA de automatización de planta elaboradora de alimentos balanceados.",
+    rawSheets: [
+      {
+        sheetName: "Pesadas_Tolva",
+        description:
+          "Registro de dosificación y pesaje en tolva con celda de carga por lote.",
+        primaryColumns: [
+          "ID_Batch",
+          "Planta",
+          "Formula",
+          "Granja_Destino",
+          "Kg_Fabricados_Tolva",
+          "Maiz_Dosificado_Kg",
+          "Soja_Dosificada_Kg",
+          "Otros_Nucleos_Kg",
+          "Control_Desvio_Kg",
+        ],
+      },
+      {
+        sheetName: "Movimientos_Silos",
+        description:
+          "Stock inicial, descargas de camión, molienda y mermas por silo.",
+        primaryColumns: [
+          "Codigo_MP",
+          "Materia_Prima",
+          "Silo_ID",
+          "Stock_Inicial_Kg",
+          "Ingresos_Descarga_Kg",
+          "Consumo_Molienda_Kg",
+          "Merma_Ajuste_Kg",
+          "Stock_Final_Kg",
+        ],
+      },
+    ],
+    feedsProcesses: ["Proceso 4 (Costo de alimento)", "Proceso 1 (Costos)"],
+  },
+  {
+    system: "Nuvix",
+    systemTitle: "Nuvix ERP Contabilidad & Compras",
+    fileName: "NUVIX_Export_Contable_Septiembre2026.xlsx",
+    downloadUrl: "/raw_exports/NUVIX_Export_Contable_Septiembre2026.xlsx",
+    description:
+      "Exportación cruda contable de facturas de compra de materias primas, fletes y liquidación de gastos por centro de costo.",
+    rawSheets: [
+      {
+        sheetName: "Facturas_Compras",
+        description:
+          "Facturación de compras de materias primas y medicamentos de farmacia.",
+        primaryColumns: [
+          "Nro_Factura",
+          "Proveedor",
+          "Centro_Costo",
+          "Codigo_Producto",
+          "Cantidad",
+          "Precio_Unitario_Ars",
+          "Total_Factura_Ars",
+        ],
+      },
+      {
+        sheetName: "Facturas_Fletes",
+        description: "Comprobantes de flete asignados a materias primas.",
+        primaryColumns: [
+          "Nro_Comprobante",
+          "Transportista",
+          "Concepto",
+          "Importe_Ars",
+          "Tipo_Cambio_Oficial",
+          "Importe_Usd",
+        ],
+      },
+      {
+        sheetName: "Gastos_Centro_Costo",
+        description:
+          "Sueldos de operarios y gastos de estructura imputados por centro.",
+        primaryColumns: ["Periodo", "Centro_Costo", "Rubro", "Importe_Ars"],
+      },
+      {
+        sheetName: "Stock_Contable_Farmacia",
+        description: "Saldo contable en Nuvix de productos sanitarios.",
+        primaryColumns: [
+          "Codigo_Producto",
+          "Producto",
+          "Centro_Costo",
+          "Stock_Registrado_Nuvix",
+        ],
+      },
+    ],
+    feedsProcesses: [
+      "Proceso 1 (Informe de costos)",
+      "Proceso 3 (Control de inventario)",
+      "Proceso 4 (Costo de alimento)",
+    ],
+  },
+  {
+    system: "Agriness",
+    systemTitle: "Agriness / S4Farm Granjas",
+    fileName: "AGRINESS_Export_Granjas_Septiembre2026.xlsx",
+    downloadUrl: "/raw_exports/AGRINESS_Export_Granjas_Septiembre2026.xlsx",
+    description:
+      "Exportación cruda biológica de producción en granja, pesadas de carne, botiquín sanitario y métricas de maternidad S4Farm.",
+    rawSheets: [
+      {
+        sheetName: "Produccion_Hacienda",
+        description:
+          "Partes de pesada de animales, ganancias de peso y comederos por sitio.",
+        primaryColumns: [
+          "Periodo",
+          "Establecimiento",
+          "Fase",
+          "Animales_Iniciales",
+          "Entradas",
+          "Salidas",
+          "Kilos_Producidos_Mes",
+          "Kilos_Alimento_Consumido",
+        ],
+      },
+      {
+        sheetName: "Sanidad_Granja",
+        description: "Dosis aplicadas en cerdos y recuento físico en granja.",
+        primaryColumns: [
+          "Codigo_Insumo",
+          "Descripcion",
+          "Establecimiento",
+          "Stock_Inicial_Fisico",
+          "Dosis_Consumidas",
+          "Recuento_Fisico_Granja",
+        ],
+      },
+      {
+        sheetName: "Maternidad_S4Farm",
+        description: "Indicadores zootécnicos del plantel reproductor.",
+        primaryColumns: ["Indicador", "Cantidad", "Unidad"],
+      },
+    ],
+    feedsProcesses: [
+      "Proceso 2 (Indicadores)",
+      "Proceso 1 (Costos)",
+      "Proceso 3 (Farmacia)",
+    ],
+  },
+];
+
 export const CANONICAL_COLUMN_DICTIONARY: ColumnAliasRule[] = [
   {
     canonicalField: "establishmentName",
@@ -250,13 +413,23 @@ export const CANONICAL_COLUMN_DICTIONARY: ColumnAliasRule[] = [
       "Planta ficticia",
       "Granja",
       "Ubicacion",
+      "Centro_Costo",
+      "Planta",
+      "Granja_Destino",
     ],
   },
   {
     canonicalField: "stage",
     label: "Etapa Productiva / Fase",
     targetSystem: "Agriness",
-    synonyms: ["Fase", "Etapa", "Sitio", "Categoria"],
+    synonyms: [
+      "Fase",
+      "Etapa",
+      "Sitio",
+      "Categoria",
+      "Fase_Sitio",
+      "Fase_Destino",
+    ],
   },
   {
     canonicalField: "producedKg",
@@ -267,6 +440,7 @@ export const CANONICAL_COLUMN_DICTIONARY: ColumnAliasRule[] = [
       "Kilos producidos",
       "Produccion kg",
       "Ganancia kg",
+      "Kilos_Producidos_Mes",
     ],
   },
   {
@@ -279,6 +453,8 @@ export const CANONICAL_COLUMN_DICTIONARY: ColumnAliasRule[] = [
       "Kg fabricados",
       "Kg elaborados",
       "Kg",
+      "Kg_Fabricados_Tolva",
+      "Kilos_Alimento_Consumido",
     ],
   },
   {
@@ -290,47 +466,175 @@ export const CANONICAL_COLUMN_DICTIONARY: ColumnAliasRule[] = [
       "Costo total ficticio $",
       "Costo $",
       "Importe Alimento",
+      "Total_Factura_Ars",
     ],
   },
   {
     canonicalField: "healthCostArs",
     label: "Gasto Sanidad ($ ARS)",
     targetSystem: "Nuvix",
-    synonyms: ["Sanidad $", "Gasto sanidad", "Total $"],
+    synonyms: ["Sanidad $", "Gasto sanidad", "Total $", "Sanidad"],
   },
   {
     canonicalField: "laborCostArs",
     label: "Mano de Obra ($ ARS)",
     targetSystem: "Nuvix",
-    synonyms: ["Mano de obra $", "Sueldos $", "Personal $"],
+    synonyms: ["Mano de obra $", "Sueldos", "Mano de Obra"],
+  },
+  {
+    canonicalField: "otherCostArs",
+    label: "Otros Gastos ($ ARS)",
+    targetSystem: "Nuvix",
+    synonyms: ["Otros $", "Indirectos", "Otros Gastos"],
+  },
+  {
+    canonicalField: "initialAnimals",
+    label: "Animales Iniciales (Cabezas)",
+    targetSystem: "Agriness",
+    synonyms: ["Animales iniciales", "Existencia inicial", "Animales_Iniciales"],
+  },
+  {
+    canonicalField: "entries",
+    label: "Entradas (Cabezas)",
+    targetSystem: "Agriness",
+    synonyms: ["Entradas", "Ingresos cabezas", "Entradas_Cabezas"],
+  },
+  {
+    canonicalField: "exits",
+    label: "Salidas / Bajas (Cabezas)",
+    targetSystem: "Agriness",
+    synonyms: ["Salidas", "Bajas cabezas", "Salidas_Cabezas"],
+  },
+  {
+    canonicalField: "finalAnimals",
+    label: "Animales Finales (Cabezas)",
+    targetSystem: "Agriness",
+    synonyms: ["Animales finales", "Stock final hacienda"],
+  },
+  {
+    canonicalField: "formulaName",
+    label: "Fórmula de Alimento",
+    targetSystem: "SCADA",
+    synonyms: [
+      "Formula ficticia",
+      "Alimento",
+      "Dieta",
+      "Formula",
+      "Formula_Dieta",
+      "Tipo_Dieta",
+    ],
+  },
+  {
+    canonicalField: "cornKg",
+    label: "Maíz Dosificado (kg)",
+    targetSystem: "SCADA",
+    synonyms: ["Maiz kg", "Consumo maiz", "Maiz_Dosificado_Kg"],
+  },
+  {
+    canonicalField: "soyKg",
+    label: "Harina de Soja Dosificada (kg)",
+    targetSystem: "SCADA",
+    synonyms: [
+      "Harina soja kg",
+      "Consumo soja",
+      "Soja_Dosificada_Kg",
+      "Harina_Soja",
+    ],
+  },
+  {
+    canonicalField: "otherKg",
+    label: "Otros Ingredientes / Núcleos (kg)",
+    targetSystem: "SCADA",
+    synonyms: ["Otros kg", "Nucleos kg", "Otros_Nucleos_Kg"],
+  },
+  {
+    canonicalField: "productCode",
+    label: "Código de Insumo / Producto",
+    targetSystem: "Nuvix",
+    synonyms: [
+      "Codigo ficticio",
+      "Codigo",
+      "SKU",
+      "Codigo_MP",
+      "Codigo_Producto",
+      "Codigo_Insumo",
+    ],
   },
   {
     canonicalField: "productName",
-    label: "Producto Sanitario / Materia Prima",
-    targetSystem: "Agriness",
+    label: "Nombre / Descripción de Producto",
+    targetSystem: "Nuvix",
     synonyms: [
       "Producto ficticio",
       "Producto",
       "Materia prima",
-      "Formula ficticia",
-      "Alimento",
+      "Materia_Prima",
+      "Descripcion",
+      "Descripcion_Articulo",
     ],
   },
   {
-    canonicalField: "consumedAgriness",
-    label: "Unidades Aplicadas (Agriness)",
+    canonicalField: "initialStock",
+    label: "Stock Inicial (Unidades / kg)",
+    targetSystem: "Agriness",
+    synonyms: [
+      "Stock inicial",
+      "Stock inicial kg",
+      "Stock_Inicial_Kg",
+      "Stock_Inicial_Fisico",
+    ],
+  },
+  {
+    canonicalField: "purchases",
+    label: "Compras (Nuvix ERP)",
+    targetSystem: "Nuvix",
+    synonyms: [
+      "Compras",
+      "Ingresos kg",
+      "Facturado",
+      "Cantidad",
+      "Ingresos_Descarga_Kg",
+    ],
+  },
+  {
+    canonicalField: "consumptions",
+    label: "Consumos (Agriness / SCADA)",
     targetSystem: "Agriness",
     synonyms: [
       "Consumos Agriness",
-      "Cantidad Agriness",
       "Consumo unidades",
+      "Consumos kg",
+      "Consumo_Molienda_Kg",
+      "Dosis_Consumidas",
     ],
   },
   {
-    canonicalField: "stockNuvix",
-    label: "Stock Contable (Nuvix)",
+    canonicalField: "theoreticalStock",
+    label: "Stock Teórico",
     targetSystem: "Nuvix",
-    synonyms: ["Stock Nuvix", "Cantidad Nuvix"],
+    synonyms: ["Stock teorico", "Stock calculado"],
+  },
+  {
+    canonicalField: "actualStockNuvix",
+    label: "Stock Registrado en Nuvix ERP",
+    targetSystem: "Nuvix",
+    synonyms: [
+      "Stock Nuvix",
+      "Cantidad Nuvix",
+      "Stock ERP",
+      "Stock_Registrado_Nuvix",
+    ],
+  },
+  {
+    canonicalField: "actualStockAgriness",
+    label: "Stock Contado en Granja (Agriness)",
+    targetSystem: "Agriness",
+    synonyms: [
+      "Stock Agriness",
+      "Cantidad Agriness",
+      "Recuento fisico",
+      "Recuento_Fisico_Granja",
+    ],
   },
 ];
 

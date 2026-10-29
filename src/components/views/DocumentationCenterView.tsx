@@ -92,25 +92,139 @@ const FORMULAS_CATALOG = [
 export const DocumentationCenterView: React.FC = () => {
   return (
     <div className="space-y-6">
-      {/* Encabezado Documentación */}
-      <div className="p-5 rounded-lg bg-[#2C365A] text-white flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="p-2.5 rounded-lg bg-white/15">
-            <BookOpen className="w-6 h-6 text-[#86EFAC]" />
+      {/* Encabezado Documentación y Mapa de Procesos */}
+      <div className="p-5 rounded-xl bg-[#2C365A] text-white flex flex-wrap items-center justify-between gap-4 shadow-sm">
+        <div className="flex items-center gap-3.5">
+          <span className="p-2.5 rounded-lg bg-white/10 text-[#86EFAC] shrink-0">
+            <BookOpen className="w-6 h-6" />
           </span>
           <div>
-            <h2 className="text-lg font-bold">
-              Documentación Integral del Sistema SIPA — Uniporc Tandil
-            </h2>
-            <p className="text-xs text-white/80">
-              Especificación de arquitectura, mapeo de columnas entre Agriness,
-              SCADA y Nuvix, catálogo de fórmulas y diseño de persistencia para
-              Iteración 2.
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-bold">
+                Mapa Oficial de los 4 Procesos de Uniporc (Documento 00)
+              </h2>
+              <Badge variant="forest" className="bg-[#1E4D3B] text-white border-none text-xs">
+                Normativa Operativa Uniporc
+              </Badge>
+            </div>
+            <p className="text-xs text-[#C4BCB0] mt-0.5 max-w-3xl">
+              Correspondencia oficial entre los 3 sistemas fuente (SCADA, Nuvix ERP, Agriness), las tareas manuales eliminadas por SIPA y las 4 salidas específicas de cada proceso.
             </p>
           </div>
         </div>
-        <Badge variant="forest">Hackaton Agro 2026 · Guía 07</Badge>
       </div>
+
+      {/* MATRIZ DE LOS 4 PROCESOS DEL DOCUMENTO 00 */}
+      <Card className="border-[#2C365A]/30 shadow-sm overflow-hidden">
+        <CardHeader className="bg-[#F7F4EF]">
+          <div>
+            <CardTitle>Matriz de Procesos, Orígenes y Salidas Específicas</CardTitle>
+            <CardDescription>
+              Definición extraída fielmente de la hoja "Mapa de procesos" del archivo <code>00 - Guía y mapa de procesos.xlsx</code>.
+            </CardDescription>
+          </div>
+          <Badge variant="ocean">Guía 00</Badge>
+        </CardHeader>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left border-collapse">
+            <thead className="bg-[#2C365A] text-white">
+              <tr>
+                <th className="py-3 px-4 font-bold">Proceso</th>
+                <th className="py-3 px-4 font-bold">Origen de Datos</th>
+                <th className="py-3 px-4 font-bold">Operación Manual Reemplazada</th>
+                <th className="py-3 px-4 font-bold">Salida Específica (Front SIPA)</th>
+                <th className="py-3 px-4 font-bold">Archivos de Ejemplo</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#C4BCB0] bg-white">
+              <tr className="hover:bg-[#F7F4EF]/70 transition-colors">
+                <td className="py-3 px-4 font-bold text-[#2C365A] whitespace-nowrap">
+                  1. Costos
+                </td>
+                <td className="py-3 px-4">
+                  <span className="font-mono bg-[#E2E6F2] text-[#1E2642] px-2 py-0.5 rounded font-semibold">
+                    Agriness + SCADA + Nuvix
+                  </span>
+                </td>
+                <td className="py-3 px-4 text-[#5C6F73]">
+                  Consolidar por granja, imputar rubros, convertir monedas
+                </td>
+                <td className="py-3 px-4">
+                  <span className="inline-flex items-center gap-1 font-bold text-[#1E4D3B] bg-[#E4F0EB] px-2.5 py-1 rounded">
+                    Informe de costos ($/kg y $/lechón)
+                  </span>
+                </td>
+                <td className="py-3 px-4 font-mono font-medium text-[#2C365A]">
+                  01 y 02
+                </td>
+              </tr>
+              <tr className="hover:bg-[#F7F4EF]/70 transition-colors">
+                <td className="py-3 px-4 font-bold text-[#2C365A] whitespace-nowrap">
+                  2. Consumos productivos
+                </td>
+                <td className="py-3 px-4">
+                  <span className="font-mono bg-[#E2E6F2] text-[#1E2642] px-2 py-0.5 rounded font-semibold">
+                    Agriness + Excel
+                  </span>
+                </td>
+                <td className="py-3 px-4 text-[#5C6F73]">
+                  Cruzar animales, fases y kg de alimento
+                </td>
+                <td className="py-3 px-4">
+                  <span className="inline-flex items-center gap-1 font-bold text-[#1E4D3B] bg-[#E4F0EB] px-2.5 py-1 rounded">
+                    Indicadores (FCR + Hacienda + Maternidad)
+                  </span>
+                </td>
+                <td className="py-3 px-4 font-mono font-medium text-[#2C365A]">
+                  03 y 09
+                </td>
+              </tr>
+              <tr className="hover:bg-[#F7F4EF]/70 transition-colors">
+                <td className="py-3 px-4 font-bold text-[#2C365A] whitespace-nowrap">
+                  3. Farmacia
+                </td>
+                <td className="py-3 px-4">
+                  <span className="font-mono bg-[#E2E6F2] text-[#1E2642] px-2 py-0.5 rounded font-semibold">
+                    Agriness + Nuvix
+                  </span>
+                </td>
+                <td className="py-3 px-4 text-[#5C6F73]">
+                  Doble carga, conciliación de stock, asiento contable
+                </td>
+                <td className="py-3 px-4">
+                  <span className="inline-flex items-center gap-1 font-bold text-[#1E4D3B] bg-[#E4F0EB] px-2.5 py-1 rounded">
+                    Control de inventario (Stock + Asiento Nuvix)
+                  </span>
+                </td>
+                <td className="py-3 px-4 font-mono font-medium text-[#2C365A]">
+                  04 y 05
+                </td>
+              </tr>
+              <tr className="hover:bg-[#F7F4EF]/70 transition-colors">
+                <td className="py-3 px-4 font-bold text-[#2C365A] whitespace-nowrap">
+                  4. Planta alimentos
+                </td>
+                <td className="py-3 px-4">
+                  <span className="font-mono bg-[#E2E6F2] text-[#1E2642] px-2 py-0.5 rounded font-semibold">
+                    SCADA + Nuvix
+                  </span>
+                </td>
+                <td className="py-3 px-4 text-[#5C6F73]">
+                  Conciliar silos, fabricación y valorización de raciones
+                </td>
+                <td className="py-3 px-4">
+                  <span className="inline-flex items-center gap-1 font-bold text-[#1E4D3B] bg-[#E4F0EB] px-2.5 py-1 rounded">
+                    Costo de alimento (Tolvas + Silos + ARS/USD)
+                  </span>
+                </td>
+                <td className="py-3 px-4 font-mono font-medium text-[#2C365A]">
+                  06, 07 y 08
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
       {/* 1. CATÁLOGO DE LAS 9 FÓRMULAS MATEMÁTICAS */}
       <Card>
@@ -124,7 +238,7 @@ export const DocumentationCenterView: React.FC = () => {
               <CardDescription>
                 Todas las fórmulas se calculan en tiempo real en{" "}
                 <code>src/services/sipaEngine.ts</code> y están auditadas contra
-                los 9 archivos del desafío.
+                los procesos y especificaciones de Uniporc.
               </CardDescription>
             </div>
           </div>

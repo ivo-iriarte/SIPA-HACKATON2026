@@ -33,6 +33,7 @@ import {
   CardDescription,
   CardContent,
   Badge,
+  Button,
 } from "../ui/primitives";
 import { ESTABLISHMENTS } from "../../data/initialUniporcData";
 
@@ -41,6 +42,9 @@ interface FarmsProductionViewProps {
   selectedEstablishment: EstablishmentId | "ALL";
   selectedStage: ProductionStage | "ALL";
   includePorcap: boolean;
+  loadedSystems?: { scada: boolean; nuvix: boolean; agriness: boolean };
+  onLoadAllSystems?: () => void;
+  onNavigateToTab?: (tab: any) => void;
 }
 
 export const FarmsProductionView: React.FC<FarmsProductionViewProps> = ({
@@ -48,6 +52,8 @@ export const FarmsProductionView: React.FC<FarmsProductionViewProps> = ({
   selectedEstablishment,
   selectedStage,
   includePorcap,
+  loadedSystems,
+  onLoadAllSystems,
 }) => {
   const filtered = records.filter((r) => {
     if (!includePorcap && r.establishmentId === "porcap") return false;
@@ -87,25 +93,51 @@ export const FarmsProductionView: React.FC<FarmsProductionViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Banner de Rol Sectorial: Vista Exclusiva Producción */}
-      <div className="p-4 rounded-lg bg-[#E4F0EB] border border-[#1E4D3B]/30 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="p-2 rounded-md bg-[#1E4D3B] text-white">
-            <HeartPulse className="w-5 h-5" />
+      {/* Banner de Proceso 2 segun Guia 00 */}
+      <div className="p-4 rounded-xl bg-[#2C365A] text-white flex flex-wrap items-center justify-between gap-4 shadow-sm">
+        <div className="flex items-center gap-3.5">
+          <span className="p-2.5 rounded-lg bg-white/10 text-[#86EFAC] shrink-0">
+            <HeartPulse className="w-6 h-6" />
           </span>
           <div>
-            <h2 className="text-sm font-bold text-[#14382A]">
-              Vista Sectorial: Producción & Zootecnia (Agriness + S4Farm)
-            </h2>
-            <p className="text-xs text-[#14382A]/80">
-              Visualización limpia de indicadores biológicos, existencias por
-              sitio y eficiencia de conversión alimenticia (sin datos salariales
-              ni contables).
+            <div className="flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-bold">Proceso 2: Consumos productivos</h2>
+              <Badge variant="forest" className="bg-[#1E4D3B] text-white border-none text-xs">
+                Salida Específica: Indicadores
+              </Badge>
+            </div>
+            <p className="text-xs text-[#C4BCB0] mt-0.5">
+              <strong>Origen:</strong> Agriness + Excel · <strong>Operación manual reemplazada:</strong> Cruzar animales, fases y kg de alimento. (Ejemplos: 03 y 09).
             </p>
           </div>
         </div>
-        <Badge variant="forest">Origen: Excels 03 y PDF 09 (S4Farm)</Badge>
+
+        <Badge variant="neutral" className="bg-white/10 text-[#86EFAC] border-white/20 text-xs">
+          Conversión FCR + Hacienda + Maternidad S4Farm
+        </Badge>
       </div>
+
+      {/* Alerta si falta Agriness */}
+      {loadedSystems && !loadedSystems.agriness && (
+        <div className="p-4 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-xs flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              <strong>Atención:</strong> Para calcular los <strong>Indicadores Zootécnicos</strong> se requiere la exportación biológica cruda de <strong>Agriness / S4Farm</strong> (partes de pesada y maternidad).
+            </span>
+          </div>
+          {onLoadAllSystems && (
+            <Button
+              variant="forest"
+              size="sm"
+              onClick={onLoadAllSystems}
+              className="text-xs h-auto py-1 font-bold"
+            >
+              Cargar datos de Agriness
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* 1. INDICADORES S4FARM DE MATERNIDAD Y CRÍA (Archivo 09) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -189,19 +221,17 @@ export const FarmsProductionView: React.FC<FarmsProductionViewProps> = ({
           <AlertCircle className="w-5 h-5 text-[#92400E] shrink-0 mt-0.5" />
           <div className="text-xs space-y-1 text-[var(--color-text)]">
             <div className="font-bold text-[#78350F]">
-              Conciliación de Alcance: ¿Por qué el Excel 03 informa 10.500 kg y
-              14.000 kg mientras el Excel 01 informa 24.000 kg y 21.000 kg?
+              Conciliación de Alcance Zootécnico: Agriness vs Consolidado Mensual Nuvix
             </div>
             <p className="text-[var(--color-text-muted)]">
-              Tal como advierte la Guía del Desafío (pág. 3), el archivo{" "}
-              <code>03 - Producción y consumos</code> reporta únicamente un lote
-              específico por sitio (<strong>Tandil Sitio 2 Recría = 10.500 kg</strong> y{" "}
-              <strong>San Lorenzo Sitio 3 Engorde = 14.000 kg</strong>), mientras
-              que el archivo <code>01 - Costos mensual</code> consolida la
+              En la conciliación operativa entre orígenes, el reporte zootécnico de Agriness
+              registra lotes por etapa (<strong>Tandil Recría = 10.500 kg</strong> y{" "}
+              <strong>San Lorenzo Engorde = 14.000 kg</strong>), mientras
+              que el informe contable mensual de Nuvix consolida la
               producción de <strong>todas las etapas del establecimiento</strong>{" "}
               en el mes (<strong>24.000 kg en Tandil</strong> y{" "}
               <strong>21.000 kg en San Lorenzo</strong>). SIPA resuelve esta
-              ambigüedad desglosando explícitamente las 3 etapas de cada granja.
+              diferencia zootécnica desglosando y conciliando las 3 etapas de cada granja.
             </p>
           </div>
         </CardContent>

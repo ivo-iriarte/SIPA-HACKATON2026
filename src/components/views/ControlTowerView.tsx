@@ -23,6 +23,7 @@ import {
   AlertTriangle,
   SlidersHorizontal,
   Layers,
+  LayoutDashboard,
   X,
 } from "lucide-react";
 import {
@@ -57,6 +58,9 @@ interface ControlTowerViewProps {
   includePorcap: boolean;
   onTogglePorcap: (val: boolean) => void;
   onUpdateStageRecord: (updated: StageCostProductionRecord) => void;
+  loadedSystems?: { scada: boolean; nuvix: boolean; agriness: boolean };
+  onLoadAllSystems?: () => void;
+  onNavigateToTab?: (tab: any) => void;
 }
 
 export const ControlTowerView: React.FC<ControlTowerViewProps> = ({
@@ -66,6 +70,9 @@ export const ControlTowerView: React.FC<ControlTowerViewProps> = ({
   selectedStage,
   includePorcap,
   onTogglePorcap,
+  loadedSystems,
+  onLoadAllSystems,
+  onNavigateToTab,
 }) => {
   const [selectedRowDetail, setSelectedRowDetail] =
     useState<StageCostProductionRecord | null>(null);
@@ -241,6 +248,69 @@ export const ControlTowerView: React.FC<ControlTowerViewProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Banner de Proceso 1 segun Guia 00 */}
+      <div className="p-4 rounded-xl bg-[#2C365A] text-white flex flex-wrap items-center justify-between gap-4 shadow-sm">
+        <div className="flex items-center gap-3.5">
+          <span className="p-2.5 rounded-lg bg-white/10 text-[#86EFAC] shrink-0">
+            <LayoutDashboard className="w-6 h-6" />
+          </span>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-bold">Proceso 1: Costos</h2>
+              <Badge variant="forest" className="bg-[#1E4D3B] text-white border-none text-xs">
+                Salida Específica: Informe de costos
+              </Badge>
+            </div>
+            <p className="text-xs text-[#C4BCB0] mt-0.5">
+              <strong>Origen:</strong> Agriness + SCADA + Nuvix · <strong>Operación manual reemplazada:</strong> Consolidar por granja, imputar rubros, convertir monedas. (Ejemplos: 01 y 02).
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={handleExportCsv}
+            className="text-xs font-semibold gap-1.5"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Exportar Informe (.csv)
+          </Button>
+        </div>
+      </div>
+
+      {/* Alerta si faltan orígenes */}
+      {loadedSystems && (!loadedSystems.scada || !loadedSystems.nuvix || !loadedSystems.agriness) && (
+        <div className="p-4 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-xs flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              <strong>Atención:</strong> Para consolidar el <strong>Informe de Costos</strong> completo se requieren los 3 orígenes crudos. Faltan por extraer:{" "}
+              <strong>
+                {[
+                  !loadedSystems.scada ? "SCADA (Alimento)" : null,
+                  !loadedSystems.nuvix ? "Nuvix ERP (Sueldos y Compras)" : null,
+                  !loadedSystems.agriness ? "Agriness (Kilos Carne)" : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </strong>
+            </span>
+          </div>
+          {onLoadAllSystems && (
+            <Button
+              variant="forest"
+              size="sm"
+              onClick={onLoadAllSystems}
+              className="text-xs h-auto py-1 font-bold"
+            >
+              Cargar exportaciones requeridas
+            </Button>
+          )}
+        </div>
+      )}
+
       {/* Barra de Modo de Alcance para Conciliación Exacta vs Expansión Uniporc */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">

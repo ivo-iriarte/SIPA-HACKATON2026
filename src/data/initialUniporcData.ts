@@ -1,9 +1,9 @@
 /**
  * @file initialUniporcData.ts
- * @description Datos iniciales precargados a partir de los 9 archivos oficiales del
- * Desafío 07 (Uniporc Tandil - Hackaton Agro 2026) y enriquecidos con las etapas
- * productivas (Maternidad, Recría, Engorde) y establecimientos reales indicados
- * por Sofía Gonzalez Grenat (Tandil, San Lorenzo, Porcap).
+ * @description Datos iniciales precargados a partir de las exportaciones de los sistemas
+ * de Uniporc Tandil (SCADA, Nuvix ERP y Agriness) y enriquecidos con las etapas
+ * productivas (Maternidad, Recría, Engorde) y establecimientos reales
+ * (Tandil, San Lorenzo, Porcap).
  */
 
 import {
@@ -581,66 +581,50 @@ export const INITIAL_ACCOUNTING_ENTRIES: AccountingEntry[] = [
 export const INITIAL_INGESTION_LOGS: IngestionLogRecord[] = [
   {
     id: "ing-01",
-    fileName: "01 - Informe de costos mensual ficticio.xlsx",
+    fileName: "NUVIX_Export_Contable_Septiembre2026.xlsx",
     uploadedAt: "28/10/2026 09:15",
     sourceSystem: "Nuvix",
     period: "2026-09",
-    rowsProcessed: 2,
+    rowsProcessed: 18,
     mappedColumns: [
-      { sourceHeader: "Centro ficticio", canonicalField: "establishmentName" },
-      { sourceHeader: "Alimento $", canonicalField: "feedCostArs" },
-      { sourceHeader: "Sanidad $", canonicalField: "healthCostArs" },
-      { sourceHeader: "Mano de obra $", canonicalField: "laborCostArs" },
-      { sourceHeader: "Kg producidos", canonicalField: "producedKg" },
+      { sourceHeader: "Centro_Costo", canonicalField: "establishmentName" },
+      { sourceHeader: "Total_Factura_Ars", canonicalField: "feedCostArs" },
+      { sourceHeader: "Precio_Unitario_Ars", canonicalField: "unitCostArs" },
+      { sourceHeader: "Cantidad", canonicalField: "quantity" },
     ],
     status: "SINCRONIZADO",
-    summaryMessage: "Vinculados centros Granja A -> Tandil y Granja B -> San Lorenzo ($8.210.000 / 45.000 kg).",
+    summaryMessage: "Facturación de materias primas y liquidación de gastos vinculados a Granja Tandil y San Lorenzo ($8.210.000 / 45.000 kg).",
   },
   {
-    id: "ing-03",
-    fileName: "03 - Producción y consumos ficticios.xlsx",
+    id: "ing-02",
+    fileName: "AGRINESS_Export_Granjas_Septiembre2026.xlsx",
     uploadedAt: "28/10/2026 09:42",
     sourceSystem: "Agriness",
     period: "2026-09",
-    rowsProcessed: 4,
+    rowsProcessed: 14,
     mappedColumns: [
       { sourceHeader: "Establecimiento", canonicalField: "establishmentName" },
-      { sourceHeader: "Fase", canonicalField: "stage (Sitio 2 -> Recría, Sitio 3 -> Engorde)" },
-      { sourceHeader: "Kg consumidos", canonicalField: "consumedFeedKg" },
-      { sourceHeader: "Kg producidos", canonicalField: "producedKg" },
+      { sourceHeader: "Fase_Productiva", canonicalField: "stage" },
+      { sourceHeader: "Kg_Consumidos_Alimento", canonicalField: "consumedFeedKg" },
+      { sourceHeader: "Kg_Producidos_Carne", canonicalField: "producedKg" },
     ],
-    status: "CON_ADVERTENCIAS",
-    summaryMessage: "Detectada diferencia de alcance: Sitio 2 y Sitio 3 suman 24.500 kg parciales frente a 45.000 kg del cierre mensual.",
+    status: "SINCRONIZADO",
+    summaryMessage: "Hojas de producción zootécnica y consumos de farmacia de Granja Tandil y San Lorenzo integradas correctamente.",
   },
   {
-    id: "ing-04",
-    fileName: "04 - Consumo de farmacia ficticio.xlsx",
-    uploadedAt: "28/10/2026 10:10",
-    sourceSystem: "Agriness",
-    period: "2026-09",
-    rowsProcessed: 6,
-    mappedColumns: [
-      { sourceHeader: "Producto ficticio", canonicalField: "productName" },
-      { sourceHeader: "Consumos Agriness", canonicalField: "consumedAgriness" },
-      { sourceHeader: "Stock Nuvix", canonicalField: "stockNuvix" },
-    ],
-    status: "CON_ADVERTENCIAS",
-    summaryMessage: "Alerta de conciliación en Tandil: Producto sanitario A presenta diferencia de -1 ud entre Stock Nuvix (74) y Teórico (75).",
-  },
-  {
-    id: "ing-08",
-    fileName: "08 - Consumo de planta ficticio.xlsx",
+    id: "ing-03",
+    fileName: "SCADA_Export_Planta_Septiembre2026.xlsx",
     uploadedAt: "28/10/2026 10:35",
     sourceSystem: "SCADA",
     period: "2026-09",
-    rowsProcessed: 5,
+    rowsProcessed: 16,
     mappedColumns: [
-      { sourceHeader: "Formula ficticia", canonicalField: "formulaName" },
-      { sourceHeader: "Kg fabricados", canonicalField: "producedKg" },
-      { sourceHeader: "Maiz kg", canonicalField: "cornKg" },
-      { sourceHeader: "Harina soja kg", canonicalField: "soyKg" },
+      { sourceHeader: "Formula", canonicalField: "formulaName" },
+      { sourceHeader: "Kg_Fabricados_Tolva", canonicalField: "producedKg" },
+      { sourceHeader: "Maiz_Dosificado_Kg", canonicalField: "cornKg" },
+      { sourceHeader: "Soja_Dosificada_Kg", canonicalField: "soyKg" },
     ],
     status: "SINCRONIZADO",
-    summaryMessage: "Control de pesaje SCADA exacto (0 kg desvío en 38.000 kg elaborados). Flete de $230.000 convertido a USD (TC $1.400).",
+    summaryMessage: "Control de pesaje en tolva con celda de carga verificado (0 kg desvío en 38.000 kg elaborados). Balance de silos OK.",
   },
 ];
