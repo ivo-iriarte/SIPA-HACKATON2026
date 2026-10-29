@@ -1,10 +1,7 @@
 /**
  * @file IngestionMapperView.tsx
- * @description Vista de Carga de Archivos (.xlsx) y Flujo de Ingesta Multi-Origen para Uniporc.
- * Flujo de empleado:
- * - Carga directa de las exportaciones de los 3 sistemas: SCADA, Nuvix ERP y Agriness.
- * - Los archivos de prueba o reales se procesan con el mismo flujo unificado mediante SheetJS.
- * - Acceso a registros históricos bajo demanda mediante modal "Ver registros históricos".
+ * @description Vista de carga de archivos (.xlsx) para los 3 orígenes operativos de Uniporc:
+ * SCADA, Nuvix ERP y Agriness.
  */
 
 import React, { useState, useRef } from "react";
@@ -15,20 +12,15 @@ import {
   CheckCircle2,
   AlertTriangle,
   ArrowRight,
-  Sparkles,
   Factory,
   Briefcase,
   HeartPulse,
   LayoutDashboard,
   Pill,
   Clock,
-  RotateCcw,
-  Download,
-  Eye,
   X,
   History,
-  FileCheck2,
-  RefreshCw,
+  Trash2,
 } from "lucide-react";
 import {
   IngestionLogRecord,
@@ -42,12 +34,11 @@ import {
 import {
   Card,
   CardHeader,
-  CardTitle,
-  CardDescription,
   CardContent,
   Badge,
   Button,
 } from "../ui/primitives";
+import { ViewHeader } from "../ui/layout";
 import type { NavTabId, LoadedSystemsState } from "../../App";
 
 interface IngestionMapperViewProps {
@@ -55,9 +46,8 @@ interface IngestionMapperViewProps {
   activePeriod: PeriodId;
   onAddIngestionLog: (log: IngestionLogRecord) => void;
   loadedSystems: LoadedSystemsState;
-  onLoadAllSystems: () => void;
   onLoadSystem: (system: "scada" | "nuvix" | "agriness") => void;
-  onResetSystems: () => void;
+  onClearSystem: (system: "scada" | "nuvix" | "agriness") => void;
   onNavigateToTab: (tabId: NavTabId) => void;
 }
 
@@ -87,13 +77,9 @@ interface SystemSlotDef {
   key: "scada" | "nuvix" | "agriness";
   system: SourceSystem;
   name: string;
-  subtitle: string;
   description: string;
   icon: React.FC<{ className?: string }>;
-  expectedSheets: string[];
   feedsProcesses: { id: NavTabId; label: string }[];
-  defaultExportFileName: string;
-  defaultExportUrl: string;
 }
 
 const SYSTEM_SLOTS: SystemSlotDef[] = [
@@ -101,46 +87,37 @@ const SYSTEM_SLOTS: SystemSlotDef[] = [
     key: "scada",
     system: "SCADA",
     name: "SCADA Planta de Alimentos",
-    subtitle: "Molienda, tolva y balanzas",
-    description: "Pesaje en tolva con celda de carga y balance de materias primas en silos.",
+    description:
+      "Pesaje en tolva con celda de carga y balance de materias primas en silos.",
     icon: Factory,
-    expectedSheets: ["Pesadas_Tolva", "Movimientos_Silos"],
     feedsProcesses: [
-      { id: "feedmill", label: "Proceso 4: Costo de alimento" },
-      { id: "costs", label: "Proceso 1: Costos" },
+      { id: "feedmill", label: "Planta alimentos" },
+      { id: "costs", label: "Costos" },
     ],
-    defaultExportFileName: "SCADA_Export_Planta_Septiembre2026.xlsx",
-    defaultExportUrl: "/raw_exports/SCADA_Export_Planta_Septiembre2026.xlsx",
   },
   {
     key: "nuvix",
     system: "Nuvix",
     name: "Nuvix ERP Contabilidad",
-    subtitle: "Facturación, fletes y centros",
-    description: "Facturas de compras de insumos, fletes de cereal y liquidación por centro de costo.",
+    description:
+      "Facturas de compras de insumos, fletes de cereal y liquidación por centro de costo.",
     icon: Briefcase,
-    expectedSheets: ["Facturas_Compras", "Facturas_Fletes", "Gastos_Centro_Costo"],
     feedsProcesses: [
-      { id: "costs", label: "Proceso 1: Costos" },
-      { id: "pharmacy", label: "Proceso 3: Farmacia" },
+      { id: "costs", label: "Costos" },
+      { id: "pharmacy", label: "Farmacia" },
     ],
-    defaultExportFileName: "NUVIX_Export_Contable_Septiembre2026.xlsx",
-    defaultExportUrl: "/raw_exports/NUVIX_Export_Contable_Septiembre2026.xlsx",
   },
   {
     key: "agriness",
     system: "Agriness",
     name: "Agriness / S4Farm",
-    subtitle: "Producción y sanidad en granja",
-    description: "Partes zootécnicos de hacienda, consumos sanitarios de farmacia y maternidad.",
+    description:
+      "Partes zootécnicos de hacienda, consumos sanitarios de farmacia y maternidad.",
     icon: HeartPulse,
-    expectedSheets: ["Produccion_Hacienda", "Sanidad_Granja", "Maternidad_S4Farm"],
     feedsProcesses: [
-      { id: "consumptions", label: "Proceso 2: Consumos productivos" },
-      { id: "pharmacy", label: "Proceso 3: Farmacia" },
+      { id: "consumptions", label: "Consumos productivos" },
+      { id: "pharmacy", label: "Farmacia" },
     ],
-    defaultExportFileName: "AGRINESS_Export_Granjas_Septiembre2026.xlsx",
-    defaultExportUrl: "/raw_exports/AGRINESS_Export_Granjas_Septiembre2026.xlsx",
   },
 ];
 
@@ -149,9 +126,8 @@ export const IngestionMapperView: React.FC<IngestionMapperViewProps> = ({
   activePeriod,
   onAddIngestionLog,
   loadedSystems,
-  onLoadAllSystems,
   onLoadSystem,
-  onResetSystems,
+  onClearSystem,
   onNavigateToTab,
 }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -161,14 +137,12 @@ export const IngestionMapperView: React.FC<IngestionMapperViewProps> = ({
   const [dragOverSystem, setDragOverSystem] = useState<
     "scada" | "nuvix" | "agriness" | null
   >(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [parsedWorkbook, setParsedWorkbook] =
     useState<ParsedWorkbookState | null>(null);
   const [syncConfirmation, setSyncConfirmation] = useState<string | null>(null);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
-  // Registro en memoria de archivos cargados por sistema
   const [systemFiles, setSystemFiles] = useState<
     Record<"scada" | "nuvix" | "agriness", LoadedFileInfo | null>
   >({
@@ -197,7 +171,6 @@ export const IngestionMapperView: React.FC<IngestionMapperViewProps> = ({
     },
   });
 
-  // Procesa un ArrayBuffer con SheetJS (mismo motor para archivos subidos y de prueba)
   const processExcelBuffer = (
     buffer: ArrayBuffer,
     fileName: string,
@@ -235,7 +208,6 @@ export const IngestionMapperView: React.FC<IngestionMapperViewProps> = ({
         mappings: autoMapped.mappings,
       });
 
-      // Determinar qué sistema se actualiza
       const targetSystem =
         forcedSystem ||
         currentSystemTarget ||
@@ -247,7 +219,6 @@ export const IngestionMapperView: React.FC<IngestionMapperViewProps> = ({
 
       onLoadSystem(targetSystem);
 
-      // Guardar información del archivo cargado
       setSystemFiles((prev) => ({
         ...prev,
         [targetSystem]: {
@@ -264,7 +235,6 @@ export const IngestionMapperView: React.FC<IngestionMapperViewProps> = ({
         },
       }));
 
-      // Registrar automáticamente en los logs de ingesta
       const newLog: IngestionLogRecord = {
         id: `ing-${Date.now()}`,
         fileName,
@@ -291,56 +261,48 @@ export const IngestionMapperView: React.FC<IngestionMapperViewProps> = ({
       setSyncConfirmation(
         `✓ Archivo "${fileName}" procesado e integrado para ${targetSystem.toUpperCase()} (${totalRowCount} registros en ${sheetNames.length} hojas).`
       );
-    } catch (err) {
+    } catch {
       setErrorMsg(
         `No se pudo leer el archivo "${fileName}". Verificá que sea un archivo Excel (.xlsx) válido.`
       );
     } finally {
-      setIsLoading(false);
       setCurrentSystemTarget(null);
     }
   };
 
-  // Manejador de subida de archivo local por input
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setIsLoading(true);
     const reader = new FileReader();
     reader.onload = (evt) => {
       if (evt.target?.result instanceof ArrayBuffer) {
-        processExcelBuffer(evt.target.result, file.name, currentSystemTarget || undefined);
+        processExcelBuffer(
+          evt.target.result,
+          file.name,
+          currentSystemTarget || undefined
+        );
       }
     };
     reader.readAsArrayBuffer(file);
     e.target.value = "";
   };
 
-  // Disparador de selector de archivos para un sistema específico
   const triggerSystemUpload = (system: "scada" | "nuvix" | "agriness") => {
     setCurrentSystemTarget(system);
     fileInputRef.current?.click();
   };
 
-  // Carga un archivo de prueba directo al mismo flujo del lector
-  const handleLoadSampleForSystem = async (slot: SystemSlotDef) => {
-    setIsLoading(true);
-    setErrorMsg(null);
-    setCurrentSystemTarget(slot.key);
-    try {
-      const response = await fetch(slot.defaultExportUrl);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      const buffer = await response.arrayBuffer();
-      processExcelBuffer(buffer, slot.defaultExportFileName, slot.key);
-    } catch (err) {
-      setErrorMsg(`No se pudo cargar el archivo de prueba para ${slot.name}.`);
-      setIsLoading(false);
+  const handleClearSystemSlot = (system: "scada" | "nuvix" | "agriness") => {
+    const currentFile = systemFiles[system];
+    if (parsedWorkbook && currentFile && parsedWorkbook.fileName === currentFile.fileName) {
+      setParsedWorkbook(null);
     }
+    setSystemFiles((prev) => ({ ...prev, [system]: null }));
+    onClearSystem(system);
+    setSyncConfirmation(null);
+    setErrorMsg(null);
   };
 
-  // Drag & drop handlers
   const handleDragOver = (
     e: React.DragEvent,
     system: "scada" | "nuvix" | "agriness"
@@ -365,7 +327,6 @@ export const IngestionMapperView: React.FC<IngestionMapperViewProps> = ({
     setDragOverSystem(null);
     const file = e.dataTransfer.files?.[0];
     if (!file) return;
-    setIsLoading(true);
     const reader = new FileReader();
     reader.onload = (evt) => {
       if (evt.target?.result instanceof ArrayBuffer) {
@@ -375,7 +336,6 @@ export const IngestionMapperView: React.FC<IngestionMapperViewProps> = ({
     reader.readAsArrayBuffer(file);
   };
 
-  // Cambia la hoja activa en el previsualizador SheetJS
   const handleSelectSheet = (sheetName: string) => {
     if (!parsedWorkbook) return;
     const rows = parsedWorkbook.sheetsData[sheetName] || [];
@@ -390,7 +350,6 @@ export const IngestionMapperView: React.FC<IngestionMapperViewProps> = ({
     });
   };
 
-  // Cambio manual de mapeo de columna
   const handleChangeColumnMapping = (
     sourceHeader: string,
     newCanonicalField: string
@@ -417,7 +376,6 @@ export const IngestionMapperView: React.FC<IngestionMapperViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Input de archivo invisible reutilizable */}
       <input
         ref={fileInputRef}
         type="file"
@@ -426,91 +384,31 @@ export const IngestionMapperView: React.FC<IngestionMapperViewProps> = ({
         className="hidden"
       />
 
-      {/* =====================================================================
-          CABECERA PRINCIPAL DE LA VISTA: FLUJO LIMPIO DE EMPLEADO
-         ===================================================================== */}
-      <div className="p-4 sm:p-5 rounded-xl bg-[#2C365A] text-[#EEE8DF] border border-[#182038] shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <span className="p-2 rounded-lg bg-white/10 text-[#86EFAC] shrink-0 mt-0.5">
-              <FileCheck2 className="w-5 h-5" />
-            </span>
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                Carga de Archivos de Sistemas (.xlsx)
-                <Badge
-                  variant="forest"
-                  className="bg-[#1E4D3B] text-white border-none text-[11px]"
-                >
-                  Período {activePeriod}
-                </Badge>
-              </h2>
-              <p className="text-xs text-[#C4BCB0] mt-1 max-w-2xl leading-relaxed">
-                Carga los archivos <strong>.xlsx</strong> extraídos de cada software operativo
-                (<strong>SCADA</strong>, <strong>Nuvix ERP</strong> y <strong>Agriness</strong>).
-                Una vez cargados, podrás consultar los resultados consolidados según proceso.
-              </p>
-            </div>
-          </div>
+      <ViewHeader
+        title="Carga de archivos (.xlsx)"
+        actions={
+          <Button
+            variant="outline"
+            size="md"
+            onClick={() => setIsHistoryModalOpen(true)}
+          >
+            <History className="w-4 h-4 text-[#43533D]" />
+            Ver registros históricos ({logs.length})
+          </Button>
+        }
+      />
 
-          {/* Acciones principales: Ver registros históricos y controles de prueba */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <Button
-              variant="secondary"
-              size="md"
-              onClick={() => setIsHistoryModalOpen(true)}
-              className="gap-2 text-xs font-semibold bg-white/10 text-white hover:bg-white/20 border-white/20"
-              title="Abrir historial de archivos procesados y auditoría de ingesta"
-            >
-              <History className="w-4 h-4 text-[#86EFAC]" />
-              Ver registros históricos ({logs.length})
-            </Button>
-
-            <Button
-              variant="forest"
-              size="md"
-              onClick={onLoadAllSystems}
-              className="gap-1.5 text-xs font-bold shadow-sm"
-              title="Cargar las exportaciones de los 3 sistemas simultáneamente"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              Cargar exportaciones del período
-            </Button>
-
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                onResetSystems();
-                setParsedWorkbook(null);
-                setSyncConfirmation(null);
-                setSystemFiles({
-                  scada: null,
-                  nuvix: null,
-                  agriness: null,
-                });
-              }}
-              className="gap-1.5 text-xs text-[#C4BCB0] hover:text-white bg-transparent hover:bg-white/10 border-white/20"
-              title="Limpiar estado para simular la experiencia desde cero"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              Reiniciar
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Alerta de confirmación o error de procesamiento */}
       {syncConfirmation && (
-        <div className="p-3.5 rounded-lg bg-[#E4F0EB] border border-[#1E4D3B]/30 text-xs font-semibold text-[#14382A] flex items-center justify-between gap-2 shadow-xs">
+        <div className="p-3.5 rounded-lg bg-[#EAEEE6] border border-[#566647]/40 text-xs font-semibold text-[#30291F] flex items-center justify-between gap-2 shadow-xs">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-[#1E4D3B] shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-[#566647] shrink-0" />
             <span>{syncConfirmation}</span>
           </div>
           <button
             type="button"
             onClick={() => setSyncConfirmation(null)}
-            className="text-[#14382A] hover:text-[#2C365A] p-1"
+            className="text-[#30291F] hover:text-[#43533D] p-1"
+            aria-label="Cerrar notificación"
           >
             <X className="w-4 h-4" />
           </button>
@@ -530,15 +428,14 @@ export const IngestionMapperView: React.FC<IngestionMapperViewProps> = ({
             type="button"
             onClick={() => setErrorMsg(null)}
             className="text-[#7F1D1D] hover:text-[#991B1B] p-1"
+            aria-label="Cerrar alerta"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
-      {/* =====================================================================
-          LAS 3 TARJETAS DE CARGA DE SISTEMAS (SCADA, NUVIX, AGRINESS)
-         ===================================================================== */}
+      {/* LAS 3 TARJETAS DE CARGA DE SISTEMAS (SCADA, NUVIX, AGRINESS) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {SYSTEM_SLOTS.map((slot) => {
           const isLoaded = loadedSystems[slot.key];
@@ -554,62 +451,55 @@ export const IngestionMapperView: React.FC<IngestionMapperViewProps> = ({
               onDrop={(e) => handleDrop(e, slot.key)}
               className={`p-5 rounded-xl border flex flex-col justify-between transition-all shadow-sm ${
                 isDragOver
-                  ? "border-[#1E4D3B] ring-2 ring-[#1E4D3B]/40 bg-[#E4F0EB]"
+                  ? "border-[#566647] ring-2 ring-[#566647]/40 bg-[#EAEEE6]"
                   : isLoaded
-                  ? "bg-white border-[#1E4D3B]/40 ring-1 ring-[#1E4D3B]/20"
-                  : "bg-[#F7F4EF] border-[#C4BCB0]"
+                  ? "bg-[#FBF8F0] border-[#566647]/50 ring-1 ring-[#566647]/20"
+                  : "bg-[#FBF8F0] border-[#D6C8AE]"
               }`}
             >
               <div>
-                {/* Cabecera de la tarjeta */}
-                <div className="flex items-center justify-between gap-2 mb-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className="p-2 rounded-lg bg-[#2C365A] text-white">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="p-2 rounded-lg bg-[#43533D] text-[#FBF8F0]">
                       <Icon className="w-4 h-4" />
                     </span>
-                    <div>
-                      <h3 className="font-bold text-sm text-[#2C365A]">
-                        {slot.name}
-                      </h3>
-                      <p className="text-[11px] text-[#5C6F73]">{slot.subtitle}</p>
-                    </div>
+                    <h3 className="type-card-title">{slot.name}</h3>
                   </div>
                   {isLoaded ? (
-                    <Badge variant="forest" className="gap-1 text-[11px] font-bold">
-                      <CheckCircle2 className="w-3 h-3" /> Cargado ✓
+                    <Badge variant="forest">
+                      <CheckCircle2 className="w-3 h-3" /> Cargado
                     </Badge>
                   ) : (
-                    <Badge variant="warning" className="gap-1 text-[11px]">
+                    <Badge variant="warning">
                       <Clock className="w-3 h-3" /> Pendiente
                     </Badge>
                   )}
                 </div>
 
-                <p className="text-xs text-[#5C6F73] mb-4 leading-relaxed">
+                <p className="text-sm text-[#6B543B] mb-4 leading-relaxed">
                   {slot.description}
                 </p>
 
-                {/* Zona de estado / Dropzone de archivo */}
                 {isLoaded && fileInfo ? (
-                  <div className="bg-[#E4F0EB]/50 border border-[#1E4D3B]/30 rounded-lg p-3.5 mb-4 space-y-2 text-xs">
-                    <div className="flex items-center justify-between font-mono font-bold text-[#14382A] text-[11px] border-b border-[#1E4D3B]/20 pb-1.5">
+                  <div className="bg-[#EAEEE6]/60 border border-[#566647]/35 rounded-lg p-3.5 mb-4 space-y-2 text-xs">
+                    <div className="flex items-center justify-between font-mono font-semibold text-[#30291F] border-b border-[#566647]/25 pb-1.5">
                       <span className="truncate" title={fileInfo.fileName}>
-                        📄 {fileInfo.fileName}
+                        {fileInfo.fileName}
                       </span>
-                      <span className="text-[10px] text-[#1E4D3B] font-semibold shrink-0 ml-2">
+                      <span className="text-[#566647] shrink-0 ml-2 tabular-nums">
                         {fileInfo.totalRows} filas
                       </span>
                     </div>
 
                     <div>
-                      <span className="text-[10px] font-bold uppercase text-[#5C6F73] block mb-1">
-                        Hojas procesadas:
+                      <span className="type-label block mb-1">
+                        Hojas procesadas
                       </span>
                       <div className="flex flex-wrap gap-1">
                         {fileInfo.sheetNames.map((sName) => (
                           <span
                             key={sName}
-                            className="bg-white px-2 py-0.5 rounded text-[10px] font-semibold text-[#2C365A] border border-[#C4BCB0]"
+                            className="bg-[#FBF8F0] px-2 py-0.5 rounded font-mono text-xs text-[#43533D] border border-[#D6C8AE]"
                           >
                             {sName}
                           </span>
@@ -617,10 +507,10 @@ export const IngestionMapperView: React.FC<IngestionMapperViewProps> = ({
                       </div>
                     </div>
 
-                    <div className="pt-1.5 border-t border-[#1E4D3B]/20 text-[10px] text-[#5C6F73] flex items-center justify-between">
+                    <div className="pt-1.5 border-t border-[#566647]/25 text-xs text-[#6B543B] flex items-center justify-between">
                       <span>Cargado: {fileInfo.uploadedAt}</span>
-                      <span className="font-semibold text-[#14382A]">
-                        {slot.system} Engine OK
+                      <span className="font-semibold text-[#43533D]">
+                        {slot.system}
                       </span>
                     </div>
                   </div>
@@ -635,173 +525,143 @@ export const IngestionMapperView: React.FC<IngestionMapperViewProps> = ({
                     tabIndex={0}
                     role="button"
                     aria-label={`Subir archivo .xlsx para ${slot.name}`}
-                    className="border-2 border-dashed border-[#2C365A]/30 hover:border-[#1E4D3B] bg-white rounded-lg p-5 text-center cursor-pointer transition-colors mb-4 group"
+                    className="border-2 border-dashed border-[#6B543B]/45 hover:border-[#43533D] bg-[#F4EFE3]/60 rounded-lg p-5 text-center cursor-pointer transition-colors mb-4 group"
                   >
-                    <div className="mx-auto w-9 h-9 rounded-full bg-[#2C365A]/10 text-[#2C365A] group-hover:bg-[#1E4D3B]/10 group-hover:text-[#1E4D3B] flex items-center justify-center mb-2 transition-colors">
+                    <div className="mx-auto w-9 h-9 rounded-full bg-[#43533D]/10 text-[#43533D] group-hover:bg-[#566647]/15 group-hover:text-[#566647] flex items-center justify-center mb-2 transition-colors">
                       <Upload className="w-4 h-4" />
                     </div>
-                    <p className="text-xs font-bold text-[#182038]">
+                    <p className="text-sm font-semibold text-[#30291F]">
                       Arrastrá el archivo .xlsx aquí
                     </p>
-                    <p className="text-[11px] text-[#5C6F73] mt-0.5">
-                      o hacé clic para explorar desde tu PC
+                    <p className="text-xs text-[#6B543B] mt-0.5">
+                      o hacé clic para explorar desde tu equipo
                     </p>
                   </div>
                 )}
 
-                {/* Salidas que alimenta este sistema */}
-                <div className="text-[11px] text-[#5C6F73] mb-4">
-                  <span className="font-semibold text-[#2C365A]">Alimenta:</span>{" "}
+                <div className="text-xs text-[#6B543B] mb-4">
+                  <span className="font-semibold text-[#43533D]">
+                    Alimenta:
+                  </span>{" "}
                   {slot.feedsProcesses.map((p) => p.label).join(", ")}
                 </div>
               </div>
 
-              {/* Botones de acción inferiores */}
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-[#C4BCB0]/50 text-xs">
+              <div className="flex items-center justify-between gap-2 pt-3 border-t border-[#D6C8AE]/70">
                 {isLoaded ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => triggerSystemUpload(slot.key)}
-                      className="text-[#2C365A] hover:underline font-semibold text-xs inline-flex items-center gap-1"
-                    >
-                      <Upload className="w-3.5 h-3.5" /> Reemplazar .xlsx
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleLoadSampleForSystem(slot)}
-                      className="text-[#5C6F73] hover:text-[#2C365A] text-xs font-medium"
-                      title="Volver a sincronizar el archivo del período"
-                    >
-                      Recargar archivo
-                    </button>
-                  </>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleClearSystemSlot(slot.key)}
+                    title={`Quitar archivo cargado de ${slot.name}`}
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-[#6B543B]" />
+                    Limpiar
+                  </Button>
                 ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => triggerSystemUpload(slot.key)}
-                      className="text-[#2C365A] hover:underline font-bold text-xs"
-                    >
-                      Seleccionar archivo
-                    </button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handleLoadSampleForSystem(slot)}
-                      className="text-[11px] font-semibold text-[#2C365A] bg-white hover:bg-[#EEE8DF]"
-                    >
-                      Cargar archivo del período
-                    </Button>
-                  </>
+                  <span />
                 )}
+                <Button
+                  variant={isLoaded ? "outline" : "primary"}
+                  size="sm"
+                  onClick={() => triggerSystemUpload(slot.key)}
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  {isLoaded ? "Reemplazar .xlsx" : "Seleccionar archivo .xlsx"}
+                </Button>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* =====================================================================
-          BANNER DE ACCESO RÁPIDO A LOS 4 PROCESOS CUANDO ESTÁN CARGADOS
-         ===================================================================== */}
+      {/* ACCESO RÁPIDO A LOS 4 PROCESOS */}
       {allLoaded && (
-        <div className="p-4 rounded-xl bg-[#2C365A] text-white flex flex-col md:flex-row items-center justify-between gap-4 shadow-md">
+        <div className="p-4 rounded-xl bg-[#43533D] text-[#FBF8F0] flex flex-col md:flex-row items-center justify-between gap-4 shadow-md">
           <div className="flex items-center gap-3">
-            <span className="p-2 rounded-full bg-[#1E4D3B] text-white shrink-0">
+            <span className="p-2 rounded-full bg-[#566647] text-[#FBF8F0] shrink-0">
               <CheckCircle2 className="w-5 h-5" />
             </span>
-            <div>
-              <h4 className="text-sm font-bold">
-                ¡Los 3 sistemas se encuentran cargados para el período!
-              </h4>
-              <p className="text-xs text-[#C4BCB0] mt-0.5">
-                Datos sincronizados. Podés consultar directamente la información según proceso:
-              </p>
-            </div>
+            <span className="text-sm font-semibold">
+              Sistemas cargados para el período. Consultar por proceso:
+            </span>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
             <button
               type="button"
               onClick={() => onNavigateToTab("costs")}
-              className="px-3.5 py-1.5 text-xs font-bold rounded bg-white text-[#2C365A] hover:bg-[#EEE8DF] transition-colors inline-flex items-center gap-1.5 shadow-sm"
+              className="px-3.5 py-1.5 text-xs font-semibold rounded bg-[#FBF8F0] text-[#30291F] hover:bg-[#F4EFE3] transition-colors inline-flex items-center gap-1.5 shadow-sm"
             >
-              <LayoutDashboard className="w-3.5 h-3.5 text-[#1E4D3B]" />
-              Proceso 1: Costos
+              <LayoutDashboard className="w-3.5 h-3.5 text-[#566647]" />
+              Costos
             </button>
             <button
               type="button"
               onClick={() => onNavigateToTab("consumptions")}
-              className="px-3.5 py-1.5 text-xs font-bold rounded bg-white text-[#2C365A] hover:bg-[#EEE8DF] transition-colors inline-flex items-center gap-1.5 shadow-sm"
+              className="px-3.5 py-1.5 text-xs font-semibold rounded bg-[#FBF8F0] text-[#30291F] hover:bg-[#F4EFE3] transition-colors inline-flex items-center gap-1.5 shadow-sm"
             >
-              <HeartPulse className="w-3.5 h-3.5 text-[#1E4D3B]" />
-              Proceso 2: Consumos
-            </button>
-            <button
-              type="button"
-              onClick={() => onNavigateToTab("pharmacy")}
-              className="px-3.5 py-1.5 text-xs font-bold rounded bg-white text-[#2C365A] hover:bg-[#EEE8DF] transition-colors inline-flex items-center gap-1.5 shadow-sm"
-            >
-              <Pill className="w-3.5 h-3.5 text-[#1E4D3B]" />
-              Proceso 3: Farmacia
+              <HeartPulse className="w-3.5 h-3.5 text-[#566647]" />
+              Consumos productivos
             </button>
             <button
               type="button"
               onClick={() => onNavigateToTab("feedmill")}
-              className="px-3.5 py-1.5 text-xs font-bold rounded bg-white text-[#2C365A] hover:bg-[#EEE8DF] transition-colors inline-flex items-center gap-1.5 shadow-sm"
+              className="px-3.5 py-1.5 text-xs font-semibold rounded bg-[#FBF8F0] text-[#30291F] hover:bg-[#F4EFE3] transition-colors inline-flex items-center gap-1.5 shadow-sm"
             >
-              <Factory className="w-3.5 h-3.5 text-[#1E4D3B]" />
-              Proceso 4: Planta
+              <Factory className="w-3.5 h-3.5 text-[#566647]" />
+              Planta alimentos
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigateToTab("pharmacy")}
+              className="px-3.5 py-1.5 text-xs font-semibold rounded bg-[#FBF8F0] text-[#30291F] hover:bg-[#F4EFE3] transition-colors inline-flex items-center gap-1.5 shadow-sm"
+            >
+              <Pill className="w-3.5 h-3.5 text-[#566647]" />
+              Farmacia
             </button>
           </div>
         </div>
       )}
 
-      {/* =====================================================================
-          PREVISUALIZADOR SHEETJS DE ARCHIVO INSPECCIONADO
-         ===================================================================== */}
+      {/* PREVISUALIZADOR SHEETJS DE ARCHIVO INSPECCIONADO */}
       {parsedWorkbook && (
-        <Card className="border-[#2C365A]/40 shadow-md">
-          <CardHeader className="bg-[#F7F4EF]">
+        <Card className="border-[#43533D]/40 shadow-md">
+          <CardHeader className="bg-[#F4EFE3]">
             <div className="flex flex-wrap items-center justify-between gap-3 w-full">
               <div className="flex items-center gap-3">
-                <span className="p-2 rounded-md bg-[#2C365A] text-white">
+                <span className="p-2 rounded-md bg-[#43533D] text-[#FBF8F0]">
                   <FileSpreadsheet className="w-5 h-5" />
                 </span>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-base text-[#2C365A]">
+                    <h3 className="type-card-title font-mono">
                       {parsedWorkbook.fileName}
                     </h3>
                     <Badge variant="ocean">
                       Sistema: {parsedWorkbook.detectedSystem}
                     </Badge>
                   </div>
-                  <p className="text-xs text-[#5C6F73]">
-                    Hojas leídas: <strong>{parsedWorkbook.sheetNames.join(", ")}</strong>
+                  <p className="text-xs text-[#6B543B]">
+                    Hojas leídas:{" "}
+                    <strong>{parsedWorkbook.sheetNames.join(", ")}</strong>
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setParsedWorkbook(null)}
-                  className="text-xs gap-1"
-                >
-                  <X className="w-3.5 h-3.5" /> Cerrar vista
-                </Button>
-              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setParsedWorkbook(null)}
+              >
+                <X className="w-3.5 h-3.5" /> Cerrar vista
+              </Button>
             </div>
           </CardHeader>
 
           <CardContent className="space-y-5 pt-4">
-            {/* Pestañas de Hojas del Excel */}
             <div>
-              <label className="text-xs font-bold text-[#2C365A] uppercase tracking-wider block mb-2">
-                Hojas del archivo:
-              </label>
+              <label className="type-label block mb-2">Hojas del archivo</label>
               <div className="flex flex-wrap gap-1.5">
                 {parsedWorkbook.sheetNames.map((sName) => (
                   <button
@@ -810,40 +670,39 @@ export const IngestionMapperView: React.FC<IngestionMapperViewProps> = ({
                     onClick={() => handleSelectSheet(sName)}
                     className={`px-3 py-1.5 rounded-md text-xs font-semibold border transition-colors ${
                       parsedWorkbook.activeSheet === sName
-                        ? "bg-[#2C365A] text-white border-[#2C365A]"
-                        : "bg-white text-[#182038] border-[#C4BCB0] hover:bg-[#F7F4EF]"
+                        ? "bg-[#43533D] text-[#FBF8F0] border-[#43533D]"
+                        : "bg-[#FBF8F0] text-[#30291F] border-[#D6C8AE] hover:bg-[#F4EFE3]"
                     }`}
                   >
-                    📄 {sName}
+                    {sName}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Mapeo de Columnas */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-bold text-[#2C365A] uppercase tracking-wider">
-                  Mapeo de Columnas detectadas en "{parsedWorkbook.activeSheet}":
+                <label className="type-label">
+                  Mapeo de columnas en "{parsedWorkbook.activeSheet}"
                 </label>
-                <span className="text-[11px] text-[#5C6F73]">
-                  {parsedWorkbook.mappings.length} columnas analizadas
+                <span className="text-xs text-[#6B543B]">
+                  {parsedWorkbook.mappings.length} columnas
                 </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                 {parsedWorkbook.mappings.map((m) => (
                   <div
                     key={m.sourceHeader}
-                    className="p-2.5 rounded-md border border-[#C4BCB0] bg-[#F7F4EF] text-xs"
+                    className="p-2.5 rounded-md border border-[#D6C8AE] bg-[#F4EFE3]/70 text-xs"
                   >
                     <div
-                      className="font-semibold text-[#182038] truncate"
+                      className="font-mono font-semibold text-[#30291F] truncate"
                       title={m.sourceHeader}
                     >
-                      "{m.sourceHeader}"
+                      {m.sourceHeader}
                     </div>
-                    <div className="flex items-center gap-1 text-[11px] text-[#5C6F73] mt-1">
-                      <ArrowRight className="w-3 h-3 text-[#1E4D3B] shrink-0" />
+                    <div className="flex items-center gap-1 text-xs text-[#6B543B] mt-1">
+                      <ArrowRight className="w-3 h-3 text-[#566647] shrink-0" />
                       <select
                         value={m.canonicalField}
                         onChange={(e) =>
@@ -852,7 +711,7 @@ export const IngestionMapperView: React.FC<IngestionMapperViewProps> = ({
                             e.target.value
                           )
                         }
-                        className="w-full bg-white border border-[#C4BCB0] rounded px-1.5 py-0.5 text-[11px] text-[#182038] font-medium"
+                        className="w-full bg-[#FBF8F0] border border-[#D6C8AE] rounded px-1.5 py-0.5 text-xs text-[#30291F] font-medium"
                       >
                         {CANONICAL_COLUMN_DICTIONARY.map((dict) => (
                           <option
@@ -869,38 +728,39 @@ export const IngestionMapperView: React.FC<IngestionMapperViewProps> = ({
               </div>
             </div>
 
-            {/* Muestra de Registros Tabulados */}
             <div>
-              <label className="text-xs font-bold text-[#2C365A] uppercase tracking-wider block mb-2">
+              <label className="type-label block mb-2">
                 Primeras filas leídas (
-                {parsedWorkbook.sheetsData[parsedWorkbook.activeSheet]?.length || 0}{" "}
-                filas totales):
+                {parsedWorkbook.sheetsData[parsedWorkbook.activeSheet]?.length ||
+                  0}{" "}
+                filas totales)
               </label>
-              <div className="border border-[#C4BCB0] rounded-lg overflow-x-auto max-h-[280px]">
+              <div className="border border-[#D6C8AE] rounded-lg overflow-x-auto max-h-[280px]">
                 <table className="w-full text-xs text-left border-collapse">
-                  <thead className="bg-[#2C365A] text-white sticky top-0">
+                  <thead className="bg-[#43533D] text-[#FBF8F0] sticky top-0">
                     <tr>
                       {parsedWorkbook.headers.map((h) => (
                         <th
                           key={h}
-                          className="p-2.5 font-semibold border-b border-[#C4BCB0]/40 whitespace-nowrap"
+                          className="p-2.5 font-semibold border-b border-[#D6C8AE]/40 whitespace-nowrap"
                         >
                           {h}
                         </th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#C4BCB0]/40 bg-white">
+                  <tbody className="divide-y divide-[#D6C8AE]/50 bg-[#FBF8F0]">
                     {(
-                      parsedWorkbook.sheetsData[parsedWorkbook.activeSheet] || []
+                      parsedWorkbook.sheetsData[parsedWorkbook.activeSheet] ||
+                      []
                     )
                       .slice(0, 10)
                       .map((row, rIdx) => (
-                        <tr key={rIdx} className="hover:bg-[#F7F4EF]">
+                        <tr key={rIdx} className="hover:bg-[#F4EFE3]">
                           {parsedWorkbook.headers.map((h) => (
                             <td
                               key={h}
-                              className="p-2.5 whitespace-nowrap text-[#182038]"
+                              className="p-2.5 whitespace-nowrap text-[#30291F]"
                             >
                               {String(row[h] ?? "")}
                             </td>
@@ -915,9 +775,7 @@ export const IngestionMapperView: React.FC<IngestionMapperViewProps> = ({
         </Card>
       )}
 
-      {/* =====================================================================
-          MODAL DE DIÁLOGO: "VER REGISTROS HISTÓRICOS"
-         ===================================================================== */}
+      {/* MODAL: "VER REGISTROS HISTÓRICOS" */}
       {isHistoryModalOpen && (
         <div
           role="dialog"
@@ -925,66 +783,56 @@ export const IngestionMapperView: React.FC<IngestionMapperViewProps> = ({
           aria-labelledby="history-dialog-title"
           className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
         >
-          <div className="bg-white rounded-xl shadow-2xl border border-[#C4BCB0] max-w-4xl w-full max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            {/* Cabecera del modal */}
-            <div className="p-4 sm:p-5 bg-[#2C365A] text-white flex items-center justify-between">
+          <div className="bg-[#FBF8F0] rounded-xl shadow-2xl border border-[#D6C8AE] max-w-4xl w-full max-h-[85vh] flex flex-col overflow-hidden">
+            <div className="p-4 sm:p-5 bg-[#43533D] text-[#FBF8F0] flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className="p-2 rounded-lg bg-white/10 text-[#86EFAC]">
+                <span className="p-2 rounded-lg bg-[#566647] text-[#FBF8F0]">
                   <History className="w-5 h-5" />
                 </span>
-                <div>
-                  <h3
-                    id="history-dialog-title"
-                    className="text-base sm:text-lg font-bold"
-                  >
-                    Registros Históricos de Ingesta
-                  </h3>
-                  <p className="text-xs text-[#C4BCB0]">
-                    Auditoría de archivos .xlsx procesados e integrados por período.
-                  </p>
-                </div>
+                <h3
+                  id="history-dialog-title"
+                  className="text-base sm:text-lg font-bold"
+                >
+                  Registros históricos de ingesta
+                </h3>
               </div>
 
               <button
                 type="button"
                 onClick={() => setIsHistoryModalOpen(false)}
-                className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+                className="p-1.5 rounded-lg text-[#FBF8F0]/80 hover:text-[#FBF8F0] hover:bg-white/10 transition-colors"
                 aria-label="Cerrar registros históricos"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Contenido del modal: Tabla de logs */}
             <div className="p-4 sm:p-6 overflow-y-auto flex-1">
               {logs.length === 0 ? (
-                <div className="text-center py-12 text-[#5C6F73]">
+                <div className="text-center py-12 text-[#6B543B]">
                   <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p className="font-semibold text-sm">
                     No hay registros históricos de ingesta aún.
                   </p>
-                  <p className="text-xs text-[#5C6F73] mt-1">
-                    Los archivos cargados se registrarán aquí con su detalle de validación.
-                  </p>
                 </div>
               ) : (
-                <div className="divide-y divide-[#C4BCB0]/50">
+                <div className="divide-y divide-[#D6C8AE]/60">
                   {logs.map((log) => (
                     <div
                       key={log.id}
-                      className="py-3 sm:py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 hover:bg-[#F7F4EF]/60 px-2 rounded-lg transition-colors"
+                      className="py-3 sm:py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 hover:bg-[#F4EFE3] px-2 rounded-lg transition-colors"
                     >
                       <div className="flex items-start gap-3">
                         <span
                           className={`w-2.5 h-2.5 rounded-full mt-1.5 shrink-0 ${
                             log.status === "SINCRONIZADO"
-                              ? "bg-[#1E4D3B]"
+                              ? "bg-[#566647]"
                               : "bg-amber-500"
                           }`}
                         />
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-sm text-[#182038]">
+                            <span className="font-mono font-semibold text-sm text-[#30291F]">
                               {log.fileName}
                             </span>
                             <Badge
@@ -995,33 +843,32 @@ export const IngestionMapperView: React.FC<IngestionMapperViewProps> = ({
                                   ? "ocean"
                                   : "neutral"
                               }
-                              className="text-[10px]"
                             >
                               {log.sourceSystem}
                             </Badge>
-                            <span className="text-xs text-[#5C6F73] font-mono">
+                            <span className="text-xs text-[#6B543B] font-mono">
                               ({log.rowsProcessed} filas · Período {log.period})
                             </span>
                           </div>
-                          <p className="text-xs text-[#5C6F73] mt-1 leading-relaxed">
+                          <p className="text-xs text-[#6B543B] mt-1 leading-relaxed">
                             {log.summaryMessage}
                           </p>
                         </div>
                       </div>
 
                       <div className="sm:text-right shrink-0 pl-5 sm:pl-0">
-                        <span className="text-[11px] text-[#5C6F73] block">
+                        <span className="text-xs text-[#6B543B] block tabular-nums">
                           {log.uploadedAt}
                         </span>
                         <Badge
                           variant={
                             log.status === "SINCRONIZADO" ? "forest" : "warning"
                           }
-                          className="text-[10px] mt-1"
+                          className="mt-1"
                         >
                           {log.status === "SINCRONIZADO"
                             ? "Sincronizado"
-                            : "Duplicado Prevenido"}
+                            : "Duplicado prevenido"}
                         </Badge>
                       </div>
                     </div>
@@ -1030,16 +877,14 @@ export const IngestionMapperView: React.FC<IngestionMapperViewProps> = ({
               )}
             </div>
 
-            {/* Pie del modal */}
-            <div className="p-4 bg-[#F7F4EF] border-t border-[#C4BCB0] flex items-center justify-between">
-              <span className="text-xs text-[#5C6F73] font-medium">
+            <div className="p-4 bg-[#F4EFE3] border-t border-[#D6C8AE] flex items-center justify-between">
+              <span className="text-xs text-[#6B543B] font-medium">
                 Total: <strong>{logs.length}</strong> cargas registradas
               </span>
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={() => setIsHistoryModalOpen(false)}
-                className="text-xs font-semibold"
               >
                 Cerrar
               </Button>

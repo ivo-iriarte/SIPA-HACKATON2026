@@ -6,31 +6,31 @@ export default {
     extend: {
       colors: {
         cream: {
-          DEFAULT: "#EEE8DF",
-          light: "#F7F4EF",
-          dark: "#E2DACD",
+          DEFAULT: "#F4EFE3", // Trigo: fondo principal
+          light: "#FBF8F0",   // Crema: superficies y paneles
+          dark: "#E8DFCE",
         },
         beige: {
-          DEFAULT: "#C4BCB0",
-          light: "#D8D2C9",
-          dark: "#9E9588",
+          DEFAULT: "#D6C8AE", // Arena: bordes y divisores
+          light: "#E4DAC6",
+          dark: "#B5A589",
         },
         ocean: {
-          DEFAULT: "#2C365A",
-          hover: "#222A47",
-          active: "#181E34",
-          light: "#3E4B7A",
-          subtle: "#E5E8F0",
+          DEFAULT: "#43533D", // Oliva profundo: navegación y acciones principales
+          hover: "#364431",
+          active: "#2B3727",
+          light: "#566647",
+          subtle: "#EAEEE6",
         },
         forest: {
-          DEFAULT: "#1E4D3B",
-          hover: "#163B2D",
-          light: "#2A6B52",
-          subtle: "#E3EFEA",
+          DEFAULT: "#566647", // Oliva suave: estados productivos
+          hover: "#43533D",
+          light: "#697B58",
+          subtle: "#EAEEE6",
         },
         slatepig: {
-          DEFAULT: "#5C6F73",
-          light: "#7A8E93",
+          DEFAULT: "#6B543B", // Nogal: acento cálido
+          light: "#856B4E",
         },
         background: "var(--color-bg)",
         surface: "var(--color-surface)",

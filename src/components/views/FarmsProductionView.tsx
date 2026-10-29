@@ -1,21 +1,12 @@
 /**
  * @file FarmsProductionView.tsx
- * @description Vista 3 — Sector Granjas y Producción Zootécnica (Agriness / S4Farm).
- * Aísla la información biológica y productiva para veterinarios y encargados de granja,
- * ocultando sueldos y contabilidad financiera. Incluye conciliación explícita entre
- * los kilos parciales por fase (Excel 03) y los kilos totales del mes (Excel 01).
+ * @description Proceso Consumos productivos — Salida: Indicadores.
+ * - Indicadores de maternidad y cría (madres activas, partos, destetados, ganancia de carne, FCR).
+ * - Balance de hacienda por fase y conversión alimenticia por sitio.
  */
 
 import React from "react";
-import {
-  Activity,
-  Baby,
-  HeartPulse,
-  Scale,
-  Wheat,
-  AlertCircle,
-  CheckCircle2,
-} from "lucide-react";
+import { Activity } from "lucide-react";
 import {
   StageCostProductionRecord,
   EstablishmentId,
@@ -30,11 +21,18 @@ import {
   Card,
   CardHeader,
   CardTitle,
-  CardDescription,
   CardContent,
   Badge,
-  Button,
 } from "../ui/primitives";
+import {
+  ViewHeader,
+  ExportButton,
+  FormulaHint,
+  MissingSourcesAlert,
+  ProcessNotes,
+  ProcessNote,
+} from "../ui/layout";
+import { downloadCsv } from "../../lib/csv";
 import { ESTABLISHMENTS } from "../../data/initialUniporcData";
 
 interface FarmsProductionViewProps {
@@ -43,8 +41,8 @@ interface FarmsProductionViewProps {
   selectedStage: ProductionStage | "ALL";
   includePorcap: boolean;
   loadedSystems?: { scada: boolean; nuvix: boolean; agriness: boolean };
-  onLoadAllSystems?: () => void;
-  onNavigateToTab?: (tab: any) => void;
+  filterSlot?: React.ReactNode;
+  onGoToUpload?: () => void;
 }
 
 export const FarmsProductionView: React.FC<FarmsProductionViewProps> = ({
@@ -53,7 +51,8 @@ export const FarmsProductionView: React.FC<FarmsProductionViewProps> = ({
   selectedStage,
   includePorcap,
   loadedSystems,
-  onLoadAllSystems,
+  filterSlot,
+  onGoToUpload,
 }) => {
   const filtered = records.filter((r) => {
     if (!includePorcap && r.establishmentId === "porcap") return false;
@@ -90,170 +89,137 @@ export const FarmsProductionView: React.FC<FarmsProductionViewProps> = ({
     filtered.length > 0
       ? filtered.reduce((s, r) => s + r.mortalityPct, 0) / filtered.length
       : 0;
+  const globalFcr = calcFeedConversionRatio(totalConsumedKg, totalProducedKg);
+
+  const handleExportCsv = () => {
+    const headers = [
+      "Establecimiento",
+      "Fase",
+      "Animales Iniciales",
+      "Entradas",
+      "Salidas",
+      "Animales Finales",
+      "Dieta",
+      "Kg Alimento",
+      "Kg Producidos",
+      "Conversion (FCR)",
+    ];
+    const rows = filtered.map((r) => [
+      r.establishmentName,
+      r.stage,
+      r.initialAnimals,
+      r.entries,
+      r.exits,
+      calcFinalAnimals(r.initialAnimals, r.entries, r.exits),
+      r.feedType,
+      r.consumedFeedKg,
+      r.producedKg,
+      calcFeedConversionRatio(r.consumedFeedKg, r.producedKg).toFixed(2),
+    ]);
+    downloadCsv("SIPA_Indicadores_Consumos_Sep2026.csv", headers, rows);
+  };
+
+  const missingSources =
+    loadedSystems && !loadedSystems.agriness ? ["Agriness"] : [];
 
   return (
     <div className="space-y-6">
-      {/* Banner de Proceso 2 segun Guia 00 */}
-      <div className="p-4 rounded-xl bg-[#2C365A] text-white flex flex-wrap items-center justify-between gap-4 shadow-sm">
-        <div className="flex items-center gap-3.5">
-          <span className="p-2.5 rounded-lg bg-white/10 text-[#86EFAC] shrink-0">
-            <HeartPulse className="w-6 h-6" />
-          </span>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-bold">Proceso 2: Consumos productivos</h2>
-              <Badge variant="forest" className="bg-[#1E4D3B] text-white border-none text-xs">
-                Salida Específica: Indicadores
-              </Badge>
-            </div>
-            <p className="text-xs text-[#C4BCB0] mt-0.5">
-              <strong>Origen:</strong> Agriness + Excel · <strong>Operación manual reemplazada:</strong> Cruzar animales, fases y kg de alimento. (Ejemplos: 03 y 09).
-            </p>
-          </div>
-        </div>
+      <ViewHeader
+        title="Consumos productivos"
+        actions={
+          <>
+            {filterSlot}
+            <ExportButton onClick={handleExportCsv} />
+          </>
+        }
+      />
 
-        <Badge variant="neutral" className="bg-white/10 text-[#86EFAC] border-white/20 text-xs">
-          Conversión FCR + Hacienda + Maternidad S4Farm
-        </Badge>
-      </div>
+      <MissingSourcesAlert
+        missing={missingSources}
+        onGoToUpload={onGoToUpload}
+      />
 
-      {/* Alerta si falta Agriness */}
-      {loadedSystems && !loadedSystems.agriness && (
-        <div className="p-4 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-xs flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-            <span>
-              <strong>Atención:</strong> Para calcular los <strong>Indicadores Zootécnicos</strong> se requiere la exportación biológica cruda de <strong>Agriness / S4Farm</strong> (partes de pesada y maternidad).
-            </span>
-          </div>
-          {onLoadAllSystems && (
-            <Button
-              variant="forest"
-              size="sm"
-              onClick={onLoadAllSystems}
-              className="text-xs h-auto py-1 font-bold"
-            >
-              Cargar datos de Agriness
-            </Button>
-          )}
-        </div>
-      )}
-
-      {/* 1. INDICADORES S4FARM DE MATERNIDAD Y CRÍA (Archivo 09) */}
+      {/* 1. INDICADORES PRODUCTIVOS Y DE MATERNIDAD */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex justify-between items-start">
-              <span className="text-xs font-bold uppercase text-[var(--color-text-muted)]">
-                Madres Activas & Partos
-              </span>
-              <Baby className="w-4 h-4 text-[#1E4D3B]" />
+        <Card className="border-l-4 border-l-[#566647]">
+          <CardContent className="p-5">
+            <div className="flex justify-between items-start gap-2">
+              <span className="type-label">Madres activas y partos</span>
             </div>
-            <div className="mt-2 text-2xl font-bold tabular-nums">
-              {formatNum(totalActiveSows)} madres
-            </div>
-            <div className="mt-1 text-xs text-[var(--color-text-subtle)] tabular-nums">
-              Partos del período: <strong>{formatNum(totalFarrowings)}</strong>{" "}
-              (Nacidos vivos: <strong>{formatNum(totalBornAlive)}</strong>)
+            <div className="mt-2 type-kpi">{formatNum(totalActiveSows)} madres</div>
+            <div className="mt-2 text-xs text-[var(--color-text-subtle)] tabular-nums">
+              Partos: <strong>{formatNum(totalFarrowings)}</strong> · Nacidos
+              vivos: <strong>{formatNum(totalBornAlive)}</strong>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex justify-between items-start">
-              <span className="text-xs font-bold uppercase text-[var(--color-text-muted)]">
-                Lechones Destetados
-              </span>
-              <CheckCircle2 className="w-4 h-4 text-[#1E4D3B]" />
+        <Card className="border-l-4 border-l-[#566647]">
+          <CardContent className="p-5">
+            <div className="flex justify-between items-start gap-2">
+              <span className="type-label">Lechones destetados</span>
             </div>
-            <div className="mt-2 text-2xl font-bold tabular-nums text-[#1E4D3B]">
+            <div className="mt-2 type-kpi text-[#566647]">
               {formatNum(totalWeaned)} cab.
             </div>
-            <div className="mt-1 text-xs text-[var(--color-text-subtle)] tabular-nums">
-              Peso medio destete: <strong>6,3 kg</strong> (Reporte S4Farm 09)
+            <div className="mt-2 text-xs text-[var(--color-text-subtle)] tabular-nums">
+              Peso medio al destete: <strong>6,3 kg</strong>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex justify-between items-start">
-              <span className="text-xs font-bold uppercase text-[var(--color-text-muted)]">
-                Ganancia Neta de Carne
-              </span>
-              <Scale className="w-4 h-4 text-[#2C365A]" />
+        <Card className="border-l-4 border-l-[#43533D]">
+          <CardContent className="p-5">
+            <div className="flex justify-between items-start gap-2">
+              <span className="type-label">Ganancia neta de carne</span>
             </div>
-            <div className="mt-2 text-2xl font-bold tabular-nums">
-              {formatNum(totalProducedKg)} kg
-            </div>
-            <div className="mt-1 text-xs text-[var(--color-text-subtle)] tabular-nums">
-              Mortalidad promedio: <strong>{formatNum(avgMortality, 1)}%</strong>
+            <div className="mt-2 type-kpi">{formatNum(totalProducedKg)} kg</div>
+            <div className="mt-2 text-xs text-[var(--color-text-subtle)] tabular-nums">
+              Mortalidad promedio:{" "}
+              <strong>{formatNum(avgMortality, 1)}%</strong>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex justify-between items-start">
-              <span className="text-xs font-bold uppercase text-[var(--color-text-muted)]">
-                Conversión Aparente (FCR)
+        <Card className="border-l-4 border-l-[#43533D]">
+          <CardContent className="p-5">
+            <div className="flex justify-between items-start gap-2">
+              <span className="type-label">Conversión aparente (FCR)</span>
+              <FormulaHint
+                formula={`FCR = Kg Consumidos ÷ Kg Producidos (${formatNum(
+                  totalConsumedKg
+                )} kg ÷ ${formatNum(totalProducedKg)} kg)`}
+              />
+            </div>
+            <div className="mt-2 flex items-baseline gap-1.5">
+              <span className="type-kpi">{formatNum(globalFcr, 2)}</span>
+              <span className="text-xs text-[var(--color-text-subtle)]">
+                kg / kg
               </span>
-              <Wheat className="w-4 h-4 text-[#2C365A]" />
             </div>
-            <div className="mt-2 text-2xl font-bold tabular-nums">
-              {formatNum(
-                calcFeedConversionRatio(totalConsumedKg, totalProducedKg),
-                2
-              )}{" "}
-              <span className="text-xs font-normal">kg/kg</span>
-            </div>
-            <div className="mt-1 text-xs text-[var(--color-text-subtle)] tabular-nums">
+            <div className="mt-2 text-xs text-[var(--color-text-subtle)] tabular-nums">
               Consumo total: <strong>{formatNum(totalConsumedKg)} kg</strong>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* 2. EXPLICACIÓN DE DISCREPANCIA ENTRE ARCHIVO 03 Y ARCHIVO 01 (Requerimiento Guía pág. 3) */}
-      <Card className="border-l-4 border-l-[#92400E] bg-[#FEF3C7]/40">
-        <CardContent className="p-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-[#92400E] shrink-0 mt-0.5" />
-          <div className="text-xs space-y-1 text-[var(--color-text)]">
-            <div className="font-bold text-[#78350F]">
-              Conciliación de Alcance Zootécnico: Agriness vs Consolidado Mensual Nuvix
-            </div>
-            <p className="text-[var(--color-text-muted)]">
-              En la conciliación operativa entre orígenes, el reporte zootécnico de Agriness
-              registra lotes por etapa (<strong>Tandil Recría = 10.500 kg</strong> y{" "}
-              <strong>San Lorenzo Engorde = 14.000 kg</strong>), mientras
-              que el informe contable mensual de Nuvix consolida la
-              producción de <strong>todas las etapas del establecimiento</strong>{" "}
-              en el mes (<strong>24.000 kg en Tandil</strong> y{" "}
-              <strong>21.000 kg en San Lorenzo</strong>). SIPA resuelve esta
-              diferencia zootécnica desglosando y conciliando las 3 etapas de cada granja.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 3. TABLA DE EXISTENCIAS BIOLÓGICAS Y CONVERSIÓN POR FASE (Archivo 03) */}
+      {/* 2. TABLA DE EXISTENCIAS BIOLÓGICAS Y CONVERSIÓN POR FASE */}
       <Card>
         <CardHeader>
-          <div>
+          <div className="flex items-center gap-2">
             <CardTitle>
-              Balance de Hacienda por Fase y Conversión Alimenticia (Agriness)
+              Balance de hacienda por fase y conversión alimenticia
             </CardTitle>
-            <CardDescription>
-              Fórmula de stock: Animales Finales = Iniciales + Entradas - Salidas
-              | FCR = Kg Consumidos ÷ Kg Producidos
-            </CardDescription>
+            <FormulaHint
+              align="left"
+              formula="Animales Finales = Iniciales + Entradas − Salidas · FCR = Kg Consumidos ÷ Kg Producidos"
+            />
           </div>
-          <Badge variant="ocean">Control Biológico por Sitio</Badge>
         </CardHeader>
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="bg-[var(--color-surface)] border-b border-[var(--color-border)] text-xs uppercase font-bold text-[var(--color-text-muted)]">
+            <thead className="table-head">
               <tr>
                 <th className="py-3 px-4">Establecimiento</th>
                 <th className="py-3 px-4">Fase / Sitio</th>
@@ -261,7 +227,7 @@ export const FarmsProductionView: React.FC<FarmsProductionViewProps> = ({
                 <th className="py-3 px-3 text-right">Entradas</th>
                 <th className="py-3 px-3 text-right">Salidas</th>
                 <th className="py-3 px-3 text-right">Anim. Finales</th>
-                <th className="py-3 px-3">Dieta Suministrada</th>
+                <th className="py-3 px-3">Dieta suministrada</th>
                 <th className="py-3 px-3 text-right">Kg Alimento</th>
                 <th className="py-3 px-3 text-right">Kg Producidos</th>
                 <th className="py-3 px-4 text-right">Conversión (FCR)</th>
@@ -278,24 +244,11 @@ export const FarmsProductionView: React.FC<FarmsProductionViewProps> = ({
                   r.consumedFeedKg,
                   r.producedKg
                 );
-                const isExactFile03 =
-                  (r.establishmentId === "tandil" && r.stage === "Recría") ||
-                  (r.establishmentId === "san_lorenzo" && r.stage === "Engorde");
 
                 return (
-                  <tr
-                    key={r.id}
-                    className={`hover:bg-[var(--color-surface)] ${
-                      isExactFile03 ? "bg-[#E4F0EB]/30" : ""
-                    }`}
-                  >
-                    <td className="py-3 px-4 font-bold text-[var(--color-text)]">
+                  <tr key={r.id} className="hover:bg-[var(--color-surface)]">
+                    <td className="py-3 px-4 font-semibold text-[var(--color-text)]">
                       {r.establishmentName}
-                      {isExactFile03 && (
-                        <span className="block text-[11px] font-semibold text-[#1E4D3B]">
-                          ★ Lote testigo Excel 03
-                        </span>
-                      )}
                     </td>
                     <td className="py-3 px-4">
                       <Badge
@@ -313,7 +266,7 @@ export const FarmsProductionView: React.FC<FarmsProductionViewProps> = ({
                     <td className="py-3 px-3 text-right tabular-nums">
                       {formatNum(r.initialAnimals)}
                     </td>
-                    <td className="py-3 px-3 text-right tabular-nums text-[#1E4D3B] font-medium">
+                    <td className="py-3 px-3 text-right tabular-nums text-[#566647] font-medium">
                       +{formatNum(r.entries)}
                     </td>
                     <td className="py-3 px-3 text-right tabular-nums text-[#991B1B] font-medium">
@@ -326,7 +279,7 @@ export const FarmsProductionView: React.FC<FarmsProductionViewProps> = ({
                     <td className="py-3 px-3 text-right tabular-nums">
                       {formatNum(r.consumedFeedKg)} kg
                     </td>
-                    <td className="py-3 px-3 text-right tabular-nums font-bold text-[#2C365A]">
+                    <td className="py-3 px-3 text-right tabular-nums font-bold text-[#43533D]">
                       {formatNum(r.producedKg)} kg
                     </td>
                     <td className="py-3 px-4 text-right tabular-nums">
@@ -342,6 +295,21 @@ export const FarmsProductionView: React.FC<FarmsProductionViewProps> = ({
           </table>
         </div>
       </Card>
+
+      {/* 3. INFORMACIÓN DEL PROCESO AL PIE */}
+      <ProcessNotes>
+        <ProcessNote title="Cruce productivo por fase (Agriness + S4Farm)">
+          Vincula el movimiento de cabezas por sitio (Maternidad, Recría y
+          Engorde) con los kilos de alimento consumidos y la ganancia neta de
+          peso vivo para calcular el índice de conversión aparente (FCR).
+        </ProcessNote>
+        <ProcessNote title="Conciliación de alcance con cierre mensual">
+          Los reportes por sitio informan lotes específicos (Tandil Recría =
+          10.500 kg; San Lorenzo Engorde = 14.000 kg), mientras que el cierre
+          contable suma las tres etapas completas de cada establecimiento
+          (24.000 kg en Tandil y 21.000 kg en San Lorenzo).
+        </ProcessNote>
+      </ProcessNotes>
     </div>
   );
 };

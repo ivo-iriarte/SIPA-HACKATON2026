@@ -1,22 +1,17 @@
 /**
  * @file PharmacyAuditView.tsx
- * @description Vista 5 — Sector Farmacia, Sanidad y Conciliación de Inventario (Agriness vs Nuvix).
- * Resuelve los Excels 04 y 05:
- * - Elimina la doble carga: toma los consumos de Agriness, los cruza contra las compras de Nuvix
- *   y calcula el Stock Teórico.
- * - Detecta y explica la inversión de signos advertida en la Guía del Desafío (Archivo 04 calcula
- *   Nuvix - Teórico = -1, mientras Archivo 05 calcula Agriness - Nuvix = +1).
- * - Genera automáticamente el Asiento Contable para Nuvix con 1 clic.
+ * @description Proceso Farmacia — Salida: Control de inventario.
+ * - Conciliación de inventario sanitario (Agriness vs Nuvix ERP) y cálculo de Stock Teórico.
+ * - Detección de diferencias de stock con exposición explícita de criterios de signo.
+ * - Generación de asiento contable para Nuvix ERP.
  */
 
 import React, { useState } from "react";
 import {
-  Pill,
   AlertTriangle,
   CheckCircle2,
   FilePlus2,
   ArrowLeftRight,
-  Info,
 } from "lucide-react";
 import {
   PharmacyInventoryRecord,
@@ -33,11 +28,18 @@ import {
   Card,
   CardHeader,
   CardTitle,
-  CardDescription,
-  CardContent,
   Badge,
   Button,
 } from "../ui/primitives";
+import {
+  ViewHeader,
+  ExportButton,
+  FormulaHint,
+  MissingSourcesAlert,
+  ProcessNotes,
+  ProcessNote,
+} from "../ui/layout";
+import { downloadCsv } from "../../lib/csv";
 
 interface PharmacyAuditViewProps {
   inventory: PharmacyInventoryRecord[];
@@ -50,8 +52,8 @@ interface PharmacyAuditViewProps {
   ) => void;
   onReconcileStock: (itemId: string) => void;
   loadedSystems?: { scada: boolean; nuvix: boolean; agriness: boolean };
-  onLoadAllSystems?: () => void;
-  onNavigateToTab?: (tab: any) => void;
+  filterSlot?: React.ReactNode;
+  onGoToUpload?: () => void;
 }
 
 export const PharmacyAuditView: React.FC<PharmacyAuditViewProps> = ({
@@ -62,7 +64,8 @@ export const PharmacyAuditView: React.FC<PharmacyAuditViewProps> = ({
   onGenerateAccountingEntry,
   onReconcileStock,
   loadedSystems,
-  onLoadAllSystems,
+  filterSlot,
+  onGoToUpload,
 }) => {
   const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
 
@@ -109,78 +112,82 @@ export const PharmacyAuditView: React.FC<PharmacyAuditViewProps> = ({
     );
   };
 
+  const handleExportCsv = () => {
+    const headers = [
+      "Codigo SKU",
+      "Establecimiento",
+      "Producto",
+      "Stock Inicial",
+      "Compras Nuvix",
+      "Consumo Agriness",
+      "Stock Teorico",
+      "Stock Nuvix",
+      "Dif (Nuvix - Teorico)",
+      "Dif (Agriness - Nuvix)",
+      "Valor Consumo ($)",
+    ];
+    const rows = filtered.map((item) => {
+      const rec = calcPharmacyReconciliation(item);
+      return [
+        item.productCode,
+        item.establishmentName,
+        item.productName,
+        item.initialStock,
+        item.purchasesNuvix,
+        item.consumedAgriness,
+        rec.theoreticalStock,
+        item.stockNuvix,
+        rec.diffNuvixVsTheoretical,
+        rec.diffAgrinessVsNuvix,
+        rec.totalConsumptionValueArs,
+      ];
+    });
+    downloadCsv("SIPA_Control_Inventario_Farmacia_Sep2026.csv", headers, rows);
+  };
+
+  const missingSources = loadedSystems
+    ? [
+        !loadedSystems.nuvix ? "Nuvix ERP" : null,
+        !loadedSystems.agriness ? "Agriness" : null,
+      ].filter((x): x is string => Boolean(x))
+    : [];
+
   return (
     <div className="space-y-6">
-      {/* Banner de Proceso 3 segun Guia 00 */}
-      <div className="p-4 rounded-xl bg-[#2C365A] text-white flex flex-wrap items-center justify-between gap-4 shadow-sm">
-        <div className="flex items-center gap-3.5">
-          <span className="p-2.5 rounded-lg bg-white/10 text-[#86EFAC] shrink-0">
-            <Pill className="w-6 h-6" />
-          </span>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-bold">Proceso 3: Farmacia</h2>
-              <Badge variant="forest" className="bg-[#1E4D3B] text-white border-none text-xs">
-                Salida Específica: Control de inventario
-              </Badge>
-            </div>
-            <p className="text-xs text-[#C4BCB0] mt-0.5">
-              <strong>Origen:</strong> Agriness + Nuvix · <strong>Operación manual reemplazada:</strong> Doble carga, conciliación de stock, asiento contable. (Ejemplos: 04 y 05).
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {discrepancyCount > 0 ? (
-            <Badge variant="danger" className="bg-[#FEE2E2] text-[#7F1D1D] border-none font-bold">
+      <ViewHeader
+        title="Farmacia"
+        status={
+          discrepancyCount > 0 ? (
+            <Badge variant="danger">
               <AlertTriangle className="w-3.5 h-3.5" /> {discrepancyCount}{" "}
-              discrepancias detectadas
+              discrepancias
             </Badge>
           ) : (
-            <Badge variant="forest" className="bg-[#E4F0EB] text-[#14382A] border-none font-bold">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Inventario 100% conciliado
+            <Badge variant="forest">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Inventario conciliado
             </Badge>
-          )}
-        </div>
-      </div>
+          )
+        }
+        actions={
+          <>
+            {filterSlot}
+            <ExportButton onClick={handleExportCsv} />
+          </>
+        }
+      />
 
-      {/* Alerta si falta Agriness o Nuvix */}
-      {loadedSystems && (!loadedSystems.agriness || !loadedSystems.nuvix) && (
-        <div className="p-4 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-xs flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-            <span>
-              <strong>Atención:</strong> Para realizar el <strong>Control de Inventario y Conciliación</strong> se requieren las compras de <strong>Nuvix ERP</strong> y los consumos aplicados de <strong>Agriness</strong>. Faltan:{" "}
-              <strong>
-                {[
-                  !loadedSystems.nuvix ? "Nuvix ERP (Compras)" : null,
-                  !loadedSystems.agriness ? "Agriness (Sanidad Granja)" : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </strong>
-            </span>
-          </div>
-          {onLoadAllSystems && (
-            <Button
-              variant="forest"
-              size="sm"
-              onClick={onLoadAllSystems}
-              className="text-xs h-auto py-1 font-bold"
-            >
-              Cargar exportaciones requeridas
-            </Button>
-          )}
-        </div>
-      )}
+      <MissingSourcesAlert
+        missing={missingSources}
+        onGoToUpload={onGoToUpload}
+      />
 
       {feedbackToast && (
         <div
           role="status"
-          className="p-3.5 rounded-lg bg-[#2C365A] text-white text-xs font-semibold flex items-center justify-between gap-3"
+          className="p-3.5 rounded-lg bg-[#43533D] text-[#FBF8F0] text-xs font-semibold flex items-center justify-between gap-3"
         >
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-[#86EFAC]" />
+            <CheckCircle2 className="w-4 h-4 text-[#D6C8AE]" />
             <span>{feedbackToast}</span>
           </div>
           <Button
@@ -188,50 +195,31 @@ export const PharmacyAuditView: React.FC<PharmacyAuditViewProps> = ({
             variant="secondary"
             onClick={() => setFeedbackToast(null)}
           >
-            Cerrar aviso
+            Cerrar
           </Button>
         </div>
       )}
 
-      {/* AUDITORÍA DE CRITERIO DE SIGNOS EN CONCILIACIÓN DE FARMACIA */}
-      <Card className="border-l-4 border-l-[#2C365A] bg-[#E2E6F2]/50">
-        <CardContent className="p-4 flex items-start gap-3">
-          <Info className="w-5 h-5 text-[#2C365A] shrink-0 mt-0.5" />
-          <div className="text-xs space-y-1">
-            <div className="font-bold text-[#1E2642]">
-              Auditoría de Signos y Criterios entre Sistemas (Agriness vs Nuvix ERP):
-            </div>
-            <p className="text-[var(--color-text-muted)]">
-              En las conciliaciones de inventario sanitario, la planilla de consumo calcula la diferencia como{" "}
-              <strong>Stock Nuvix - Stock Teórico (74 - 75 = -1)</strong>,
-              mientras que la planilla de granja la calcula como{" "}
-              <strong>Cantidad Agriness - Cantidad Nuvix (75 - 74 = +1)</strong>.
-              SIPA unifica la clave relacional por{" "}
-              <code>(Establecimiento + Código SKU)</code> y expone ambas
-              fórmulas lado a lado para evitar ajustes contables con el signo invertido.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* TABLA DE CONCILIACIÓN Y VALORIZACIÓN DE FARMACIA */}
       <Card>
         <CardHeader>
-          <div>
+          <div className="flex items-center gap-2">
             <CardTitle>
-              Matriz de Conciliación de Stock y Valorización de Consumos Sanitarios
+              Conciliación de stock y valorización de consumos sanitarios
             </CardTitle>
-            <CardDescription>
-              Fórmula: Stock Teórico = Stock Inicial + Compras (Nuvix) - Consumo
-              Aplicado (Agriness) | Valor Total Consumido:{" "}
-              <strong>{formatArs(totalConsumptionValue)}</strong>
-            </CardDescription>
+            <FormulaHint
+              align="left"
+              formula="Stock Teórico = Stock Inicial + Compras (Nuvix) − Consumo Aplicado (Agriness)"
+            />
           </div>
+          <Badge variant="ocean">
+            Consumo valorizado: {formatArs(totalConsumptionValue)}
+          </Badge>
         </CardHeader>
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="bg-[var(--color-surface)] border-b border-[var(--color-border)] text-xs uppercase font-bold text-[var(--color-text-muted)]">
+            <thead className="table-head">
               <tr>
                 <th className="py-3 px-4">Establecimiento / SKU</th>
                 <th className="py-3 px-3 text-right">Stk Inicial</th>
@@ -240,13 +228,13 @@ export const PharmacyAuditView: React.FC<PharmacyAuditViewProps> = ({
                 <th className="py-3 px-3 text-right">= Stk Teórico</th>
                 <th className="py-3 px-3 text-right">Stk Nuvix</th>
                 <th className="py-3 px-3 text-center">
-                  Dif. (Nuvix - Teórico) [04]
+                  Dif. (Nuvix − Teórico)
                 </th>
                 <th className="py-3 px-3 text-center">
-                  Dif. (Agriness - Nuvix) [05]
+                  Dif. (Agriness − Nuvix)
                 </th>
-                <th className="py-3 px-3 text-right">Valor Consumo ($)</th>
-                <th className="py-3 px-4 text-center">Acción Contable / Stock</th>
+                <th className="py-3 px-3 text-right">Valor consumo ($)</th>
+                <th className="py-3 px-4 text-center">Acción contable / Stock</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)]/60">
@@ -261,10 +249,10 @@ export const PharmacyAuditView: React.FC<PharmacyAuditViewProps> = ({
                   >
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-xs font-bold text-[#2C365A]">
+                        <span className="font-mono text-xs font-bold text-[#43533D]">
                           [{item.productCode}]
                         </span>
-                        <span className="font-bold text-[var(--color-text)]">
+                        <span className="font-semibold text-[var(--color-text)]">
                           {item.establishmentName}
                         </span>
                       </div>
@@ -275,7 +263,7 @@ export const PharmacyAuditView: React.FC<PharmacyAuditViewProps> = ({
                     <td className="py-3 px-3 text-right tabular-nums">
                       {formatNum(item.initialStock)}
                     </td>
-                    <td className="py-3 px-3 text-right tabular-nums text-[#1E4D3B] font-medium">
+                    <td className="py-3 px-3 text-right tabular-nums text-[#566647] font-medium">
                       +{formatNum(item.purchasesNuvix)}
                     </td>
                     <td className="py-3 px-3 text-right tabular-nums text-[#991B1B] font-bold">
@@ -308,10 +296,10 @@ export const PharmacyAuditView: React.FC<PharmacyAuditViewProps> = ({
                       )}
                     </td>
                     <td className="py-3 px-3 text-right tabular-nums">
-                      <div className="font-bold text-[#2C365A]">
+                      <div className="font-bold text-[#43533D]">
                         {formatArs(rec.totalConsumptionValueArs)}
                       </div>
-                      <div className="text-[11px] text-[var(--color-text-subtle)]">
+                      <div className="text-xs text-[var(--color-text-subtle)]">
                         {formatNum(item.consumedAgriness)} x{" "}
                         {formatArs(item.unitCostArs)}
                       </div>
@@ -338,7 +326,7 @@ export const PharmacyAuditView: React.FC<PharmacyAuditViewProps> = ({
                             onClick={() => handleCreateEntry(item)}
                           >
                             <FilePlus2 className="w-3.5 h-3.5" />
-                            Generar Asiento
+                            Generar asiento
                           </Button>
                         )}
                       </div>
@@ -350,6 +338,23 @@ export const PharmacyAuditView: React.FC<PharmacyAuditViewProps> = ({
           </table>
         </div>
       </Card>
+
+      {/* INFORMACIÓN DEL PROCESO AL PIE */}
+      <ProcessNotes>
+        <ProcessNote title="Conciliación automática e imputación contable">
+          Cruza las compras registradas en Nuvix ERP con los consumos sanitarios
+          aplicados en Agriness por establecimiento y código SKU, eliminando la
+          doble carga manual y generando el asiento contable para Nuvix.
+        </ProcessNote>
+        <ProcessNote title="Auditoría de criterios de signo (Agriness vs Nuvix)">
+          La planilla de consumo calcula la diferencia como{" "}
+          <strong>Stock Nuvix − Stock Teórico (74 − 75 = −1)</strong>, mientras
+          que la de granja la calcula como{" "}
+          <strong>Cantidad Agriness − Cantidad Nuvix (75 − 74 = +1)</strong>.
+          Ambas columnas se exponen lado a lado para evitar ajustes con signo
+          invertido.
+        </ProcessNote>
+      </ProcessNotes>
     </div>
   );
 };

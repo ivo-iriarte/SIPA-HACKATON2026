@@ -3,54 +3,60 @@
 @tailwind utilities;
 
 /* =====================================================================
-   SIPA Design System Tokens (Based on frontend-ux-ui skill tokens.css)
-   Palette:
-   - Cream (#EEE8DF)
-   - Beige (#C4BCB0)
-   - Deep Ocean (#2C365A)
-   - Forest Pig Green (#1E4D3B)
-   All foreground/background pairs verified >= 4.5:1 WCAG 2.2 AA
+   SIPA Design System Tokens
+   Paleta:
+   - Trigo (#F4EFE3): fondo principal
+   - Crema (#FBF8F0): superficies y paneles
+   - Arena (#D6C8AE): bordes y divisores
+   - Oliva profundo (#43533D): navegación y acciones principales
+   - Oliva suave (#566647): estados productivos
+   - Nogal (#6B543B): acento cálido
+   - Tinta cálida (#30291F): texto principal
    ===================================================================== */
 
 :root {
   color-scheme: light dark;
 
-  /* ---------- Color: light theme (Editorial Cream & Deep Ocean) ---------- */
-  --color-bg: #EEE8DF;               /* Cream main canvas */
-  --color-surface: #F7F4EF;          /* Warm ivory cards & panels */
-  --color-surface-raised: #FFFFFF;   /* Crisp white elevated cards, modals, tables */
-  --color-border: #C4BCB0;           /* Beige structural dividers */
-  --color-border-input: #5C6F73;     /* Control boundaries: >3.5:1 against bg */
+  /* ---------- Color: light theme ---------- */
+  --color-bg: #F4EFE3;               /* Trigo: fondo principal */
+  --color-surface: #FBF8F0;          /* Crema: superficies y paneles */
+  --color-surface-raised: #FBF8F0;   /* Crema: tarjetas y paneles elevados */
+  --color-border: #D6C8AE;           /* Arena: bordes y divisores */
+  --color-border-input: #6B543B;     /* Nogal: bordes de controles */
 
-  --color-text: #182038;             /* Deepest ocean ink (13.23:1 on Cream) */
-  --color-text-muted: #2C365A;       /* Deep Ocean secondary text (9.67:1 on Cream) */
-  --color-text-subtle: #444F6E;      /* Hints, captions (6.65:1 on Cream) */
+  --color-text: #30291F;             /* Tinta cálida: texto principal */
+  --color-text-muted: #43533D;       /* Oliva profundo */
+  --color-text-subtle: #6B543B;      /* Nogal: metadatos y subtítulos */
 
-  --color-primary: #2C365A;          /* Deep Ocean primary brand action */
-  --color-primary-hover: #212946;
-  --color-primary-active: #181E34;
-  --color-on-primary: #FFFFFF;
-  --color-primary-subtle: #E2E5EE;
-  --color-on-primary-subtle: #182038;
+  --color-primary: #43533D;          /* Oliva profundo: navegación y acciones principales */
+  --color-primary-hover: #364431;
+  --color-primary-active: #2B3727;
+  --color-on-primary: #FBF8F0;
+  --color-primary-subtle: #EAEEE6;
+  --color-on-primary-subtle: #30291F;
 
-  --color-accent: #1E4D3B;           /* Forest Green from SIPA Pig Logo */
-  --color-accent-subtle: #E1EDE8;
+  --color-accent: #566647;           /* Oliva suave: estados productivos */
+  --color-accent-subtle: #EAEEE6;
 
-  --color-success: #1E4D3B;  --color-success-bg: #E4F0EB;  --color-on-success-bg: #14382A;
+  --color-success: #566647;  --color-success-bg: #EAEEE6;  --color-on-success-bg: #30291F;
   --color-warning: #92400E;  --color-warning-bg: #FEF3C7;  --color-on-warning-bg: #78350F;
   --color-danger:  #991B1B;  --color-danger-bg:  #FEE2E2;  --color-on-danger-bg:  #7F1D1D;
-  --color-info:    #2C365A;  --color-info-bg:    #E2E6F2;  --color-on-info-bg:    #1E2642;
+  --color-info:    #43533D;  --color-info-bg:    #EAEEE6;  --color-on-info-bg:    #30291F;
 
-  --color-focus: #1E4D3B;
-  --color-overlay: rgb(24 32 56 / 0.55);
+  --color-focus: #566647;
+  --color-overlay: rgb(48 41 31 / 0.55);
 
-  --shadow-sm: 0 1px 2px rgb(44 54 90 / 0.07);
-  --shadow-md: 0 4px 14px rgb(44 54 90 / 0.10);
-  --shadow-lg: 0 14px 34px rgb(44 54 90 / 0.16);
+  --shadow-sm: 0 1px 2px rgb(48 41 31 / 0.07);
+  --shadow-md: 0 4px 14px rgb(48 41 31 / 0.10);
+  --shadow-lg: 0 14px 34px rgb(48 41 31 / 0.16);
 
-  /* ---------- Type ---------- */
+  /* ---------- Type ----------
+     Convención tipográfica (2 familias):
+     - DM Sans  → toda la interfaz: títulos, rótulos, texto y cifras (con tabular-nums).
+     - JetBrains Mono → fórmulas, códigos (SKU, MP-01) y nombres de archivo.
+  */
   --font-sans: "DM Sans", system-ui, -apple-system, sans-serif;
-  --font-serif: "Instrument Serif", Georgia, serif;
+  --font-serif: var(--font-sans);
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
   --text-xs: 0.75rem;
@@ -106,33 +112,6 @@
   --z-toast: 500;
 }
 
-:root[data-theme="dark"] {
-  --color-bg: #14192B;
-  --color-surface: #1E253D;
-  --color-surface-raised: #27304F;
-  --color-border: #38446B;
-  --color-border-input: #8E9BBF;
-
-  --color-text: #EEE8DF;
-  --color-text-muted: #D4CEC3;
-  --color-text-subtle: #A8A196;
-
-  --color-primary: #EEE8DF;
-  --color-primary-hover: #FFFFFF;
-  --color-primary-active: #C4BCB0;
-  --color-on-primary: #182038;
-  --color-primary-subtle: #2C365A;
-  --color-on-primary-subtle: #EEE8DF;
-
-  --color-success: #52B788;  --color-success-bg: #123124;  --color-on-success-bg: #95D5B2;
-  --color-warning: #FBBF24;  --color-warning-bg: #3D2806;  --color-on-warning-bg: #FDE68A;
-  --color-danger:  #F87171;  --color-danger-bg:  #421212;  --color-on-danger-bg:  #FCA5A5;
-  --color-info:    #93C5FD;  --color-info-bg:    #1E294B;  --color-on-info-bg:    #BFDBFE;
-
-  --color-focus: #52B788;
-  --color-overlay: rgb(8 11 20 / 0.72);
-}
-
 *, *::before, *::after {
   box-sizing: border-box;
 }
@@ -164,6 +143,34 @@ table {
 
 .tabular-nums {
   font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Escala tipográfica SIPA ---------- */
+@layer components {
+  /* Título de vista (h2) */
+  .type-page-title {
+    @apply text-xl font-bold tracking-tight text-[#30291F];
+  }
+  /* Título de tarjeta / sección (h3) */
+  .type-card-title {
+    @apply text-base font-semibold tracking-tight text-[#30291F];
+  }
+  /* Rótulo / eyebrow de KPI y encabezados de tabla */
+  .type-label {
+    @apply text-xs font-semibold uppercase tracking-wide text-[#6B543B];
+  }
+  /* Valor numérico destacado (KPI) */
+  .type-kpi {
+    @apply text-2xl font-bold tracking-tight tabular-nums text-[#30291F];
+  }
+  /* Fórmulas y códigos */
+  .type-formula {
+    @apply font-mono text-xs leading-relaxed;
+  }
+  /* Encabezado de tabla de datos */
+  .table-head {
+    @apply bg-[#FBF8F0] border-b border-[#D6C8AE] text-xs uppercase font-semibold tracking-wide text-[#6B543B];
+  }
 }
 
 /* Visible keyboard focus per WCAG 2.2 AA */

@@ -21,15 +21,15 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "primary", size = "md", ...props }, ref) => {
     const variants: Record<NonNullable<ButtonProps["variant"]>, string> = {
       primary:
-        "bg-[#2C365A] text-white hover:bg-[#212946] active:bg-[#181E34] shadow-sm",
+        "bg-[#43533D] text-[#FBF8F0] hover:bg-[#364431] active:bg-[#2B3727] shadow-sm",
       forest:
-        "bg-[#1E4D3B] text-white hover:bg-[#163B2D] active:bg-[#112E23] shadow-sm",
+        "bg-[#566647] text-[#FBF8F0] hover:bg-[#43533D] active:bg-[#364431] shadow-sm",
       secondary:
-        "bg-[#E2DACD] text-[#182038] hover:bg-[#D5CBB9] border border-[#C4BCB0]",
+        "bg-[#F4EFE3] text-[#30291F] hover:bg-[#D6C8AE]/60 border border-[#D6C8AE]",
       outline:
-        "bg-white/80 text-[#182038] border border-[#5C6F73] hover:bg-[#F7F4EF]",
+        "bg-[#FBF8F0] text-[#30291F] border border-[#6B543B] hover:bg-[#F4EFE3]",
       ghost:
-        "bg-transparent text-[#2C365A] hover:bg-[#E2DACD]/60",
+        "bg-transparent text-[#43533D] hover:bg-[#F4EFE3]",
       danger:
         "bg-[#991B1B] text-white hover:bg-[#7F1D1D] shadow-sm",
     };
@@ -101,13 +101,7 @@ export function CardTitle({
   ...props
 }: React.HTMLAttributes<HTMLHeadingElement>) {
   return (
-    <h3
-      className={cn(
-        "text-base font-bold tracking-tight text-[var(--color-text)]",
-        className
-      )}
-      {...props}
-    >
+    <h3 className={cn("type-card-title", className)} {...props}>
       {children}
     </h3>
   );
@@ -120,7 +114,7 @@ export function CardDescription({
 }: React.HTMLAttributes<HTMLParagraphElement>) {
   return (
     <p
-      className={cn("text-xs text-[var(--color-text-subtle)] mt-0.5", className)}
+      className={cn("text-sm text-[var(--color-text-subtle)] mt-0.5", className)}
       {...props}
     >
       {children}
@@ -155,15 +149,15 @@ export function Badge({
 }: BadgeProps) {
   const styles: Record<NonNullable<BadgeProps["variant"]>, string> = {
     ocean:
-      "bg-[#E2E6F2] text-[#1E2642] border border-[#2C365A]/30",
+      "bg-[#F4EFE3] text-[#43533D] border border-[#43533D]/35",
     forest:
-      "bg-[#E4F0EB] text-[#14382A] border border-[#1E4D3B]/30",
+      "bg-[#EAEEE6] text-[#43533D] border border-[#566647]/40",
     warning:
       "bg-[#FEF3C7] text-[#78350F] border border-[#92400E]/30",
     danger:
       "bg-[#FEE2E2] text-[#7F1D1D] border border-[#991B1B]/30",
     neutral:
-      "bg-[#EEE8DF] text-[#182038] border border-[#C4BCB0]",
+      "bg-[#F4EFE3] text-[#30291F] border border-[#D6C8AE]",
   };
 
   return (
